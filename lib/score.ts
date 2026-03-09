@@ -1,4 +1,4 @@
-import { Deal, DealScore, TravelerProfile } from "@/lib/types";
+import type { Deal, DealScore, TravelerProfile } from "@/lib/types";
 
 const premiumCabinWeights: Record<string, number> = {
   first: 18,

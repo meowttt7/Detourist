@@ -2,3 +2,11 @@ node_modules
 .next
 out
 .env*
+
+data/detourist.sqlite
+data/detourist.sqlite-shm
+data/detourist.sqlite-wal
+data/email-outbox.json
+data/events.json
+data/profiles.json
+data/users.json

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { scoreDeal } from "@/lib/score";
-import { Deal, TravelerProfile } from "@/lib/types";
+import { trackDealEvent } from "@/lib/tracking-client";
+import { Deal, TravelerProfile, UserRecord } from "@/lib/types";
 
 const profileStorageKey = "detourist-profile";
 const savedDealsKey = "detourist-saved-deals";
@@ -13,54 +14,77 @@ const hiddenDealsKey = "detourist-hidden-deals";
 type SortMode = "best" | "latest" | "cheapest";
 type FilterMode = "all" | "flight" | "hotel" | "saved";
 
+async function persistProfileState(payload: {
+  profile?: Partial<TravelerProfile>;
+  savedDealIds?: string[];
+  hiddenDealIds?: string[];
+}) {
+  await fetch("/api/profile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+}
+
 export function DealFeed() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<TravelerProfile | null>(null);
+  const [user, setUser] = useState<UserRecord | null>(null);
   const [savedDeals, setSavedDeals] = useState<string[]>([]);
   const [hiddenDeals, setHiddenDeals] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("best");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(profileStorageKey);
-    if (stored) {
+    async function loadState() {
       try {
-        setProfile(JSON.parse(stored) as TravelerProfile);
-      } catch {
-        window.localStorage.removeItem(profileStorageKey);
-      }
-    }
+        const profileResponse = await fetch("/api/profile", { cache: "no-store" });
+        const profilePayload = (await profileResponse.json()) as {
+          profile: (TravelerProfile & { savedDealIds: string[]; hiddenDealIds: string[] }) | null;
+          user: UserRecord | null;
+        };
 
-    const saved = window.localStorage.getItem(savedDealsKey);
-    if (saved) {
-      try {
-        setSavedDeals(JSON.parse(saved) as string[]);
-      } catch {
-        window.localStorage.removeItem(savedDealsKey);
-      }
-    }
+        if (profilePayload.profile) {
+          setProfile(profilePayload.profile);
+          setUser(profilePayload.user);
+          setSavedDeals(profilePayload.profile.savedDealIds);
+          setHiddenDeals(profilePayload.profile.hiddenDealIds);
+          window.localStorage.setItem(profileStorageKey, JSON.stringify(profilePayload.profile));
+          window.localStorage.setItem(savedDealsKey, JSON.stringify(profilePayload.profile.savedDealIds));
+          window.localStorage.setItem(hiddenDealsKey, JSON.stringify(profilePayload.profile.hiddenDealIds));
+        } else {
+          const storedProfile = window.localStorage.getItem(profileStorageKey);
+          const storedSaved = window.localStorage.getItem(savedDealsKey);
+          const storedHidden = window.localStorage.getItem(hiddenDealsKey);
 
-    const hidden = window.localStorage.getItem(hiddenDealsKey);
-    if (hidden) {
-      try {
-        setHiddenDeals(JSON.parse(hidden) as string[]);
-      } catch {
-        window.localStorage.removeItem(hiddenDealsKey);
-      }
-    }
+          const nextProfile = storedProfile ? (JSON.parse(storedProfile) as TravelerProfile) : null;
+          const nextSaved = storedSaved ? (JSON.parse(storedSaved) as string[]) : [];
+          const nextHidden = storedHidden ? (JSON.parse(storedHidden) as string[]) : [];
 
-    async function loadDeals() {
-      try {
-        const response = await fetch("/api/deals", { cache: "no-store" });
-        const payload = (await response.json()) as { deals?: Deal[]; error?: string };
-
-        if (!response.ok || !payload.deals) {
-          throw new Error(payload.error ?? "Could not load deals.");
+          if (nextProfile) {
+            setProfile(nextProfile);
+            setSavedDeals(nextSaved);
+            setHiddenDeals(nextHidden);
+            await persistProfileState({
+              profile: nextProfile,
+              savedDealIds: nextSaved,
+              hiddenDealIds: nextHidden,
+            });
+          }
         }
 
-        setDeals(payload.deals);
+        const dealsResponse = await fetch("/api/deals", { cache: "no-store" });
+        const dealsPayload = (await dealsResponse.json()) as { deals?: Deal[]; error?: string };
+
+        if (!dealsResponse.ok || !dealsPayload.deals) {
+          throw new Error(dealsPayload.error ?? "Could not load deals.");
+        }
+
+        setDeals(dealsPayload.deals);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Could not load deals.");
       } finally {
@@ -68,7 +92,7 @@ export function DealFeed() {
       }
     }
 
-    void loadDeals();
+    void loadState();
   }, []);
 
   const rankedDeals = useMemo(() => {
@@ -94,22 +118,47 @@ export function DealFeed() {
       });
   }, [deals, filterMode, hiddenDeals, profile, savedDeals, sortMode]);
 
-  function toggleSaved(id: string) {
+  function syncLocalState(nextSaved: string[], nextHidden: string[]) {
+    window.localStorage.setItem(savedDealsKey, JSON.stringify(nextSaved));
+    window.localStorage.setItem(hiddenDealsKey, JSON.stringify(nextHidden));
+    void persistProfileState({
+      profile: profile ?? undefined,
+      savedDealIds: nextSaved,
+      hiddenDealIds: nextHidden,
+    });
+  }
+
+  function toggleSaved(deal: Deal) {
     setSavedDeals((current) => {
-      const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
-      window.localStorage.setItem(savedDealsKey, JSON.stringify(next));
+      const isCurrentlySaved = current.includes(deal.id);
+      const next = isCurrentlySaved ? current.filter((item) => item !== deal.id) : [...current, deal.id];
+      syncLocalState(next, hiddenDeals);
+      if (!isCurrentlySaved) {
+        void trackDealEvent({
+          type: "save_deal",
+          dealId: deal.id,
+          dealSlug: deal.slug,
+          surface: "feed",
+        });
+      }
       return next;
     });
   }
 
-  function hideDeal(id: string) {
+  function hideDeal(deal: Deal) {
     setHiddenDeals((current) => {
-      if (current.includes(id)) {
+      if (current.includes(deal.id)) {
         return current;
       }
 
-      const next = [...current, id];
-      window.localStorage.setItem(hiddenDealsKey, JSON.stringify(next));
+      const next = [...current, deal.id];
+      syncLocalState(savedDeals, next);
+      void trackDealEvent({
+        type: "hide_deal",
+        dealId: deal.id,
+        dealSlug: deal.slug,
+        surface: "feed",
+      });
       return next;
     });
   }
@@ -138,6 +187,14 @@ export function DealFeed() {
               <li>Saved deals: {savedDeals.length}</li>
               <li>Hidden deals: {hiddenDeals.length}</li>
             </ul>
+            <div className="account-banner account-banner-tight">
+              <p className="section-kicker">Linked account</p>
+              <p>
+                {user?.email
+                  ? `Waitlist and profile linked to ${user.email}.`
+                  : "This profile exists independently right now. Join the waitlist from the homepage to attach an email identity."}
+              </p>
+            </div>
             <a className="button button-secondary" href="/onboarding">
               Edit profile
             </a>
@@ -217,18 +274,42 @@ export function DealFeed() {
                 </div>
                 <div className="deal-actions deal-actions-stack">
                   <div className="deal-actions-inline">
-                    <button className="button button-secondary" type="button" onClick={() => toggleSaved(deal.id)}>
+                    <button className="button button-secondary" type="button" onClick={() => toggleSaved(deal)}>
                       {isSaved ? "Saved" : "Save deal"}
                     </button>
-                    <button className="button button-secondary" type="button" onClick={() => hideDeal(deal.id)}>
+                    <button className="button button-secondary" type="button" onClick={() => hideDeal(deal)}>
                       Hide
                     </button>
                   </div>
                   <div className="deal-actions-inline">
-                    <Link className="button button-secondary" href={`/deals/${deal.slug}`}>
+                    <Link
+                      className="button button-secondary"
+                      href={`/deals/${deal.slug}`}
+                      onClick={() => {
+                        void trackDealEvent({
+                          type: "detail_view",
+                          dealId: deal.id,
+                          dealSlug: deal.slug,
+                          surface: "feed",
+                        });
+                      }}
+                    >
                       View detail
                     </Link>
-                    <a className="button" href={deal.bookingUrl} target="_blank" rel="noreferrer">
+                    <a
+                      className="button"
+                      href={deal.bookingUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={() => {
+                        void trackDealEvent({
+                          type: "booking_click",
+                          dealId: deal.id,
+                          dealSlug: deal.slug,
+                          surface: "feed",
+                        });
+                      }}
+                    >
                       Booking link
                     </a>
                   </div>

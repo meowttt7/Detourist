@@ -1,5 +1,4 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { getDb } from "@/lib/db";
 
 export type WaitlistEntry = {
   email: string;
@@ -7,34 +6,27 @@ export type WaitlistEntry = {
   source: string;
 };
 
-const waitlistPath = path.join(process.cwd(), "data", "waitlist.json");
-
-async function readWaitlist(): Promise<WaitlistEntry[]> {
-  try {
-    const file = await fs.readFile(waitlistPath, "utf8");
-    const parsed = JSON.parse(file);
-    return Array.isArray(parsed) ? (parsed as WaitlistEntry[]) : [];
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      return [];
-    }
-
-    throw error;
-  }
+function mapWaitlistEntry(row: Record<string, unknown>): WaitlistEntry {
+  return {
+    email: String(row.email),
+    createdAt: String(row.created_at),
+    source: String(row.source),
+  };
 }
 
-async function writeWaitlist(entries: WaitlistEntry[]) {
-  await fs.mkdir(path.dirname(waitlistPath), { recursive: true });
-  await fs.writeFile(waitlistPath, JSON.stringify(entries, null, 2), "utf8");
+export async function getAllWaitlistEntries() {
+  const db = getDb();
+  const rows = db.prepare("SELECT email, created_at, source FROM waitlist_entries ORDER BY created_at DESC").all() as Record<string, unknown>[];
+  return rows.map(mapWaitlistEntry);
 }
 
 export async function addToWaitlist(email: string, source = "landing-page") {
+  const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
-  const entries = await readWaitlist();
+  const existing = db.prepare("SELECT email, created_at, source FROM waitlist_entries WHERE email = ?").get(normalizedEmail) as Record<string, unknown> | undefined;
 
-  const existingEntry = entries.find((entry) => entry.email === normalizedEmail);
-  if (existingEntry) {
-    return { status: "existing" as const, entry: existingEntry };
+  if (existing) {
+    return { status: "existing" as const, entry: mapWaitlistEntry(existing) };
   }
 
   const nextEntry: WaitlistEntry = {
@@ -43,8 +35,11 @@ export async function addToWaitlist(email: string, source = "landing-page") {
     source,
   };
 
-  entries.push(nextEntry);
-  await writeWaitlist(entries);
+  db.prepare("INSERT INTO waitlist_entries (email, created_at, source) VALUES (?, ?, ?)").run(
+    nextEntry.email,
+    nextEntry.createdAt,
+    nextEntry.source,
+  );
 
   return { status: "created" as const, entry: nextEntry };
 }

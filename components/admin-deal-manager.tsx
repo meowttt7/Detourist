@@ -1,8 +1,9 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { Deal } from "@/lib/types";
+import type { Deal } from "@/lib/types";
 
 type DealDraft = {
   type: "flight" | "hotel";
@@ -26,6 +27,25 @@ type DealDraft = {
   bookingUrl: string;
   expiresAt: string;
   tags: string;
+};
+
+type DeliveryBreakdown = {
+  sent: number;
+  queued: number;
+  failed: number;
+};
+
+type DemoSeedResult = {
+  status: "created" | "existing";
+  message: string;
+  created: {
+    profiles: number;
+    linkedUsers: number;
+    waitlistOnlyUsers: number;
+    events: number;
+    alerts: number;
+    deliveries: DeliveryBreakdown;
+  };
 };
 
 const defaultDraft: DealDraft = {
@@ -52,11 +72,23 @@ const defaultDraft: DealDraft = {
   tags: "business-class, flexible",
 };
 
-export function AdminDealManager() {
+function summarizeDelivery(delivery: DeliveryBreakdown | undefined) {
+  if (!delivery) {
+    return "0 sent, 0 queued, 0 failed";
+  }
+
+  return `${delivery.sent} sent, ${delivery.queued} queued, ${delivery.failed} failed`;
+}
+
+export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel: string }) {
+  const router = useRouter();
   const [draft, setDraft] = useState<DealDraft>(defaultDraft);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [status, setStatus] = useState<string>("Ready to publish.");
   const [loading, setLoading] = useState(true);
+  const [backfillStatus, setBackfillStatus] = useState<string>("Alert matching runs automatically on publish.");
+  const [demoStatus, setDemoStatus] = useState<string>("Seed demo mode to light up the dashboard with believable product activity.");
+  const [digestStatus, setDigestStatus] = useState<string>("Daily digest waits for users on batch mode and can be triggered manually for now.");
 
   async function loadDeals() {
     setLoading(true);
@@ -90,15 +122,100 @@ export function AdminDealManager() {
       }),
     });
 
-    const payload = (await response.json()) as { error?: string };
+    const payload = (await response.json()) as {
+      error?: string;
+      alertsGenerated?: number;
+      deliveryBreakdown?: DeliveryBreakdown;
+    };
+
     if (!response.ok) {
       setStatus(payload.error ?? "Could not publish deal.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
       return;
     }
 
     setDraft(defaultDraft);
-    setStatus("Deal published.");
+    setStatus(`Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`);
     await loadDeals();
+    router.refresh();
+  };
+
+  const handleBackfill = async () => {
+    setBackfillStatus("Backfilling alerts across existing deals...");
+
+    const response = await fetch("/api/alerts/run", {
+      method: "POST",
+    });
+
+    const payload = (await response.json()) as { error?: string; createdCount?: number; deliveries?: DeliveryBreakdown };
+    if (!response.ok) {
+      setBackfillStatus(payload.error ?? "Could not run alert backfill.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      return;
+    }
+
+    setBackfillStatus(`Backfill complete. ${payload.createdCount ?? 0} missing alerts created. Delivery: ${summarizeDelivery(payload.deliveries)}.`);
+    router.refresh();
+  };
+
+  const handleDigestRun = async () => {
+    setDigestStatus("Running daily digests...");
+
+    const response = await fetch("/api/digests/run", {
+      method: "POST",
+    });
+
+    const payload = (await response.json()) as {
+      error?: string;
+      usersProcessed?: number;
+      digestsCreated?: number;
+      skippedForCadence?: number;
+      skippedForWindow?: number;
+      deliveries?: DeliveryBreakdown;
+    };
+    if (!response.ok) {
+      setDigestStatus(payload.error ?? "Could not run daily digests.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      return;
+    }
+
+    setDigestStatus(
+      `Daily digest run complete. ${payload.digestsCreated ?? 0} digests created across ${payload.usersProcessed ?? 0} users. ` +
+      `${payload.skippedForCadence ?? 0} skipped for cadence, ${payload.skippedForWindow ?? 0} skipped for timing. ` +
+      `Delivery: ${summarizeDelivery(payload.deliveries)}.`,
+    );
+    router.refresh();
+  };
+
+  const handleSeedDemo = async () => {
+    setDemoStatus("Seeding demo mode...");
+
+    const response = await fetch("/api/demo/seed", {
+      method: "POST",
+    });
+
+    const payload = (await response.json()) as { error?: string } & Partial<DemoSeedResult>;
+    if (!response.ok || !payload.status || !payload.created) {
+      setDemoStatus(payload.error ?? "Could not seed demo mode.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      return;
+    }
+
+    setDemoStatus(
+      `${payload.message} ${payload.created.profiles} profiles, ${payload.created.linkedUsers} linked users, ` +
+      `${payload.created.waitlistOnlyUsers} waitlist-only users, ${payload.created.events} events, ` +
+      `${payload.created.alerts} alerts. Delivery: ${summarizeDelivery(payload.created.deliveries)}.`,
+    );
+    await loadDeals();
+    router.refresh();
   };
 
   return (
@@ -205,6 +322,36 @@ export function AdminDealManager() {
       </form>
 
       <section className="admin-list">
+        <div className="detail-card admin-ops-card">
+          <p className="section-kicker">Demo mode</p>
+          <h3>Light up Detourist with one click</h3>
+          <p className="support-text">Create believable travelers, matched alerts, queued email deliveries, and early engagement signals without repeat-seeding duplicates.</p>
+          <div className="detail-actions-column admin-ops-actions">
+            <button className="button button-secondary" type="button" onClick={handleSeedDemo}>Seed demo data</button>
+            <p className="status-copy">{demoStatus}</p>
+          </div>
+        </div>
+
+        <div className="detail-card admin-ops-card">
+          <p className="section-kicker">Alerts</p>
+          <h3>Keep the alert inventory healthy</h3>
+          <p className="support-text">Publishing new deals generates alerts automatically. Use backfill after importing profiles or adding seed content.</p>
+          <div className="detail-actions-column admin-ops-actions">
+            <button className="button button-secondary" type="button" onClick={handleBackfill}>Run alert backfill</button>
+            <p className="status-copy">{backfillStatus}</p>
+          </div>
+        </div>
+
+        <div className="detail-card admin-ops-card">
+          <p className="section-kicker">Digests</p>
+          <h3>Send the daily batch</h3>
+          <p className="support-text">Users on daily digest mode collect matched alerts until a digest run sends them as a single email. Scheduled runs can safely fire every hour and will only send after {digestScheduleLabel} once per local day.</p>
+          <div className="detail-actions-column admin-ops-actions">
+            <button className="button button-secondary" type="button" onClick={handleDigestRun}>Run daily digests</button>
+            <p className="status-copy">{digestStatus}</p>
+          </div>
+        </div>
+
         <div className="section-heading-row product-heading-row">
           <div>
             <p className="section-kicker">Current deals</p>
@@ -215,7 +362,7 @@ export function AdminDealManager() {
           {deals.map((deal) => (
             <article className="mini-deal-card" key={deal.id}>
               <div>
-                <p className="mini-label">{deal.type} · {deal.cabin}</p>
+                <p className="mini-label">{deal.type} | {deal.cabin}</p>
                 <h3>{deal.title}</h3>
                 <p>{deal.origin} to {deal.destination}</p>
               </div>

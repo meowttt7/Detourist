@@ -1,0 +1,34 @@
+name: Detourist Daily Digests
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  trigger-digests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger scheduled digest endpoint
+        env:
+          DETOURIST_APP_URL: ${{ secrets.DETOURIST_APP_URL }}
+          DETOURIST_CRON_SECRET: ${{ secrets.DETOURIST_CRON_SECRET }}
+        run: |
+          if [ -z "$DETOURIST_APP_URL" ]; then
+            echo "DETOURIST_APP_URL secret is required."
+            exit 1
+          fi
+
+          if [ -z "$DETOURIST_CRON_SECRET" ]; then
+            echo "DETOURIST_CRON_SECRET secret is required."
+            exit 1
+          fi
+
+          curl --fail-with-body \
+            --silent \
+            --show-error \
+            -X POST \
+            -H "Authorization: Bearer $DETOURIST_CRON_SECRET" \
+            "$DETOURIST_APP_URL/api/digests/schedule"

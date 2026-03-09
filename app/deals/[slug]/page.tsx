@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { DealBookingButton } from "@/components/deal-booking-button";
+import { DealDetailTracker } from "@/components/deal-detail-tracker";
 import { ProductNav } from "@/components/product-nav";
 import { getDealBySlug } from "@/lib/deal-store";
 import { scoreDeal } from "@/lib/score";
@@ -17,6 +19,7 @@ export default async function DealDetailPage({ params }: { params: Promise<{ slu
   return (
     <main className="page-shell product-page-shell">
       <ProductNav />
+      <DealDetailTracker dealId={deal.id} dealSlug={deal.slug} />
       <section className="section product-hero detail-hero">
         <div>
           <p className="section-kicker">{deal.type === "flight" ? deal.cabin : "Luxury stay"}</p>
@@ -34,9 +37,14 @@ export default async function DealDetailPage({ params }: { params: Promise<{ slu
             <small>/100</small>
           </div>
           <p className="detail-score-label">{score.matchLabel}</p>
-          <a className="button" href={deal.bookingUrl} target="_blank" rel="noreferrer">
-            Open booking link
-          </a>
+          <DealBookingButton
+            className="button"
+            href={deal.bookingUrl}
+            dealId={deal.id}
+            dealSlug={deal.slug}
+            label="Open booking link"
+            surface="detail-page"
+          />
         </div>
       </section>
 

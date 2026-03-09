@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import { generateAlertsForDeal } from "@/lib/alerts";
+import { isAdminAuthenticated } from "@/lib/auth";
 import { addDeal, getAllDeals } from "@/lib/deal-store";
 import { Deal } from "@/lib/types";
 
@@ -18,6 +20,10 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  if (!(await isAdminAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   try {
     const body = (await request.json()) as Partial<Deal>;
 
@@ -56,7 +62,16 @@ export async function POST(request: Request) {
       tags: Array.isArray(body.tags) ? body.tags : [],
     });
 
-    return NextResponse.json({ deal: nextDeal }, { status: 201 });
+    const result = await generateAlertsForDeal(nextDeal);
+
+    return NextResponse.json(
+      {
+        deal: nextDeal,
+        alertsGenerated: result.alerts.length,
+        deliveryBreakdown: result.deliveries,
+      },
+      { status: 201 },
+    );
   } catch {
     return NextResponse.json({ error: "Could not create deal." }, { status: 500 });
   }

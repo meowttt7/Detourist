@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { TravelerProfile } from "@/lib/types";
+import { TravelerProfile, UserRecord } from "@/lib/types";
 
 const profileStorageKey = "detourist-profile";
 
@@ -31,31 +31,86 @@ function toggleValue(list: string[], value: string) {
 export function OnboardingForm() {
   const router = useRouter();
   const [profile, setProfile] = useState<TravelerProfile>(defaultProfile);
+  const [user, setUser] = useState<UserRecord | null>(null);
+  const [statusMessage, setStatusMessage] = useState("Your profile can now sync to the Detourist backend.");
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(profileStorageKey);
-    if (!stored) {
-      return;
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profile", { cache: "no-store" });
+        const payload = (await response.json()) as { profile: TravelerProfile | null; user: UserRecord | null };
+
+        if (payload.profile) {
+          setProfile(payload.profile);
+          setUser(payload.user);
+          window.localStorage.setItem(profileStorageKey, JSON.stringify(payload.profile));
+          return;
+        }
+      } catch {
+      }
+
+      const stored = window.localStorage.getItem(profileStorageKey);
+      if (!stored) {
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(stored) as TravelerProfile;
+        setProfile(parsed);
+      } catch {
+        window.localStorage.removeItem(profileStorageKey);
+      }
     }
 
-    try {
-      const parsed = JSON.parse(stored) as TravelerProfile;
-      setProfile(parsed);
-    } catch {
-      window.localStorage.removeItem(profileStorageKey);
-    }
+    void loadProfile();
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSaving(true);
-    window.localStorage.setItem(profileStorageKey, JSON.stringify(profile));
-    router.push("/deals");
+    setStatusMessage("Saving your detour profile...");
+
+    try {
+      const response = await fetch("/api/profile", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ profile }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not save profile.");
+      }
+
+      const payload = (await response.json()) as { profile: TravelerProfile; user: UserRecord | null };
+      window.localStorage.setItem(profileStorageKey, JSON.stringify(payload.profile));
+      setUser(payload.user);
+      setStatusMessage(
+        payload.user?.email
+          ? `Profile saved and linked to ${payload.user.email}. Sending you to the live deal feed...`
+          : "Profile saved. Sending you to the live deal feed...",
+      );
+      router.push("/deals");
+    } catch {
+      setStatusMessage("We couldn't save your profile just now. Your local draft is still here.");
+      setIsSaving(false);
+    }
   };
 
   return (
     <form className="product-form" onSubmit={handleSubmit}>
+      {user ? (
+        <div className="account-banner">
+          <p className="section-kicker">Linked identity</p>
+          <p>
+            {user.email
+              ? `This traveler profile is linked to ${user.email}.`
+              : "This traveler profile exists, but it is not linked to a waitlist email yet."}
+          </p>
+        </div>
+      ) : null}
       <section className="form-section-grid">
         <div className="form-card">
           <p className="section-kicker">Step 1</p>
@@ -228,7 +283,7 @@ export function OnboardingForm() {
       <div className="form-footer">
         <div>
           <p className="form-footer-title">What happens next</p>
-          <p>Your profile stays on this device for now, and Detourist uses it to rank deals by value versus inconvenience.</p>
+          <p>{statusMessage}</p>
         </div>
         <button className="button" type="submit" disabled={isSaving}>
           {isSaving ? "Saving profile..." : "Save profile and see deals"}

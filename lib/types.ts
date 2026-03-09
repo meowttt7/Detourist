@@ -39,6 +39,91 @@ export type TravelerProfile = {
   tripStyles: string[];
 };
 
+export type StoredTravelerProfile = TravelerProfile & {
+  id: string;
+  savedDealIds: string[];
+  hiddenDealIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AlertNotificationPreference = "instant" | "daily_digest" | "paused";
+
+export type UserRecord = {
+  id: string;
+  email: string | null;
+  profileId: string | null;
+  waitlistStatus: "joined" | "not_joined";
+  waitlistSources: string[];
+  alertPreference: AlertNotificationPreference;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AlertChannel = "email" | "in_app";
+
+export type AlertStatus = "new" | "viewed";
+
+export type DealAlert = {
+  id: string;
+  dealId: string;
+  dealSlug: string;
+  dealTitle: string;
+  profileId: string;
+  userId: string | null;
+  score: number;
+  matchLabel: string;
+  reasonSummary: string;
+  channel: AlertChannel;
+  status: AlertStatus;
+  digestDeliveryId: string | null;
+  digestedAt: string | null;
+  createdAt: string;
+  viewedAt: string | null;
+};
+
+export type EmailDeliveryMode = "smtp" | "outbox";
+
+export type EmailDeliveryStatus = "sent" | "queued" | "failed";
+
+export type EmailDeliveryKind = "alert" | "signin" | "digest";
+
+export type EmailDeliveryMetadata = {
+  requestedProfileId?: string | null;
+  profileId?: string | null;
+  alertIds?: string[];
+  alertCount?: number;
+};
+
+export type EmailDelivery = {
+  id: string;
+  kind: EmailDeliveryKind;
+  referenceId: string;
+  userId: string | null;
+  recipientEmail: string;
+  subject: string;
+  mode: EmailDeliveryMode;
+  status: EmailDeliveryStatus;
+  retryCount: number;
+  metadata: EmailDeliveryMetadata;
+  errorMessage: string | null;
+  createdAt: string;
+  sentAt: string | null;
+};
+
+export type DealEventType = "detail_view" | "booking_click" | "save_deal" | "hide_deal";
+
+export type DealEvent = {
+  id: string;
+  type: DealEventType;
+  dealId: string;
+  dealSlug?: string;
+  userId: string | null;
+  profileId: string | null;
+  surface: string;
+  createdAt: string;
+};
+
 export type DealScore = {
   score: number;
   matchLabel: string;
