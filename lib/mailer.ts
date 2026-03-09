@@ -54,6 +54,16 @@ function getFromAddress() {
   return process.env.DETOURIST_EMAIL_FROM ?? "Detourist <alerts@detourist.local>";
 }
 
+export function getMailerConfigSummary() {
+  return {
+    mode: usingSmtp() ? "smtp" : "outbox",
+    fromAddress: getFromAddress(),
+    smtpHost: process.env.DETOURIST_SMTP_HOST ?? null,
+    smtpPort: process.env.DETOURIST_SMTP_PORT ?? null,
+    smtpSecure: String(process.env.DETOURIST_SMTP_SECURE ?? "false") === "true",
+  };
+}
+
 function appendOutboxEmail(email: OutboxEmail) {
   fs.mkdirSync(path.dirname(outboxPath), { recursive: true });
   let current: OutboxEmail[] = [];

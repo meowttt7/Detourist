@@ -15,7 +15,7 @@ function MetricCard({ label, value, note }: { label: string; value: string | num
 
 export async function AdminDashboard() {
   const analytics = await getAdminAnalytics();
-  const { totals, lists } = analytics;
+  const { totals, operations, lists } = analytics;
 
   return (
     <section className="admin-dashboard-shell">
@@ -50,6 +50,45 @@ export async function AdminDashboard() {
       </div>
 
       <div className="admin-insights-grid">
+        <article className="detail-card">
+          <p className="section-kicker">Operations</p>
+          <h2>Live config snapshot</h2>
+          <div className="mini-stat-list">
+            <div className="mini-stat-row">
+              <span>App URL</span>
+              <strong>{operations.appUrl}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Database</span>
+              <strong>{operations.databaseProvider}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Turso ready</span>
+              <strong>{operations.tursoConfigured ? "yes" : "no"}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Mailer</span>
+              <strong>{operations.mailerMode}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>From</span>
+              <strong>{operations.fromAddress}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>SMTP</span>
+              <strong>{operations.smtpHost ? `${operations.smtpHost}:${operations.smtpPort ?? "?"}${operations.smtpSecure ? " (TLS)" : ""}` : "not configured"}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Digest schedule</span>
+              <strong>{operations.digestScheduleLabel}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Cron secret</span>
+              <strong>{operations.cronSecretConfigured ? "present" : "missing"}</strong>
+            </div>
+          </div>
+        </article>
+
         <article className="detail-card">
           <p className="section-kicker">Coverage</p>
           <h2>Content mix</h2>

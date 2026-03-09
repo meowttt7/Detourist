@@ -1,7 +1,10 @@
 import { getAllAlerts } from "@/lib/alert-store";
+import { getDatabaseProviderLabel } from "@/lib/db";
+import { formatDigestScheduleLabel, getDigestScheduleConfig } from "@/lib/digest-config";
 import { getAllDeals } from "@/lib/deal-store";
 import { getAllEmailDeliveries, getEmailDeliveriesByReferences } from "@/lib/email-delivery-store";
 import { getAllEvents } from "@/lib/event-store";
+import { getMailerConfigSummary } from "@/lib/mailer";
 import { getAllProfiles } from "@/lib/profile-store";
 import { getAllUsers } from "@/lib/user-store";
 import { getAllWaitlistEntries } from "@/lib/waitlist-store";
@@ -134,6 +137,8 @@ export async function getAdminAnalytics() {
   }));
 
   const recentEmailDeliveries = emailDeliveries.slice(0, 8);
+  const digestConfig = getDigestScheduleConfig();
+  const mailer = getMailerConfigSummary();
 
   return {
     totals: {
@@ -168,6 +173,20 @@ export async function getAdminAnalytics() {
       queuedEmails,
       failedEmails,
       digestEmails,
+    },
+    operations: {
+      appUrl: (process.env.DETOURIST_APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+      databaseProvider: getDatabaseProviderLabel(),
+      mailerMode: mailer.mode,
+      fromAddress: mailer.fromAddress,
+      smtpHost: mailer.smtpHost,
+      smtpPort: mailer.smtpPort,
+      smtpSecure: mailer.smtpSecure,
+      digestScheduleLabel: formatDigestScheduleLabel(),
+      digestHour: digestConfig.hour,
+      digestTimeZone: digestConfig.timeZone,
+      cronSecretConfigured: Boolean(digestConfig.cronSecret),
+      tursoConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
     },
     lists: {
       topDestinations,
