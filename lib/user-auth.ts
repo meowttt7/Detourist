@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 
 import { cookies } from "next/headers";
 
-import { getDb } from "@/lib/db";
+import { dbGet, dbRun } from "@/lib/db";
 
 const userSessionCookieName = "detourist_user_session";
 const fallbackSecret = "detourist-dev-secret-change-me";
@@ -89,25 +89,27 @@ export async function isUserAuthenticated() {
 }
 
 export async function createUserMagicLinkToken(input: StoredAuthToken) {
-  const db = getDb();
   const rawToken = crypto.randomBytes(24).toString("base64url");
   const tokenId = crypto.randomUUID();
   const now = new Date();
   const expiresAt = new Date(now.getTime() + magicLinkLifetimeMinutes * 60 * 1000).toISOString();
 
-  db.prepare(`
-    INSERT INTO user_auth_tokens (
-      id, token_hash, user_id, email, requested_profile_id, created_at, expires_at, consumed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    tokenId,
-    hashToken(rawToken),
-    input.userId,
-    input.email,
-    input.requestedProfileId,
-    now.toISOString(),
-    expiresAt,
-    null,
+  await dbRun(
+    `
+      INSERT INTO user_auth_tokens (
+        id, token_hash, user_id, email, requested_profile_id, created_at, expires_at, consumed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      tokenId,
+      hashToken(rawToken),
+      input.userId,
+      input.email,
+      input.requestedProfileId,
+      now.toISOString(),
+      expiresAt,
+      null,
+    ],
   );
 
   return {
@@ -117,11 +119,13 @@ export async function createUserMagicLinkToken(input: StoredAuthToken) {
 }
 
 export async function consumeUserMagicLinkToken(rawToken: string) {
-  const db = getDb();
-  const row = db.prepare(`
-    SELECT * FROM user_auth_tokens
-    WHERE token_hash = ? AND consumed_at IS NULL
-  `).get(hashToken(rawToken)) as Record<string, unknown> | undefined;
+  const row = await dbGet(
+    `
+      SELECT * FROM user_auth_tokens
+      WHERE token_hash = ? AND consumed_at IS NULL
+    `,
+    [hashToken(rawToken)],
+  );
 
   if (!row) {
     return null;
@@ -132,7 +136,7 @@ export async function consumeUserMagicLinkToken(rawToken: string) {
   }
 
   const consumedAt = new Date().toISOString();
-  db.prepare("UPDATE user_auth_tokens SET consumed_at = ? WHERE id = ?").run(consumedAt, String(row.id));
+  await dbRun("UPDATE user_auth_tokens SET consumed_at = ? WHERE id = ?", [consumedAt, String(row.id)]);
 
   return {
     userId: String(row.user_id),

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import type { AlertNotificationPreference, UserRecord } from "@/lib/types";
 
 type UpsertUserInput = {
@@ -26,45 +26,34 @@ function mapUser(row: Record<string, unknown>): UserRecord {
 }
 
 export async function getAllUsers() {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM users ORDER BY updated_at DESC").all() as Record<string, unknown>[];
+  const rows = await dbAll("SELECT * FROM users ORDER BY updated_at DESC");
   return rows.map(mapUser);
 }
 
 export async function getUserById(id: string) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM users WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM users WHERE id = ?", [id]);
   return row ? mapUser(row) : null;
 }
 
 export async function getUserByEmail(email: string) {
-  const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
-  const row = db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM users WHERE email = ?", [normalizedEmail]);
   return row ? mapUser(row) : null;
 }
 
 export async function getUserByProfileId(profileId: string) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM users WHERE profile_id = ?").get(profileId) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM users WHERE profile_id = ?", [profileId]);
   return row ? mapUser(row) : null;
 }
 
 export async function upsertUser(input: UpsertUserInput) {
-  const db = getDb();
   const normalizedEmail = input.email?.trim().toLowerCase() ?? null;
   const now = new Date().toISOString();
 
   const existingRow =
-    (input.id
-      ? (db.prepare("SELECT * FROM users WHERE id = ?").get(input.id) as Record<string, unknown> | undefined)
-      : undefined) ??
-    (normalizedEmail
-      ? (db.prepare("SELECT * FROM users WHERE email = ?").get(normalizedEmail) as Record<string, unknown> | undefined)
-      : undefined) ??
-    (input.profileId
-      ? (db.prepare("SELECT * FROM users WHERE profile_id = ?").get(input.profileId) as Record<string, unknown> | undefined)
-      : undefined);
+    (input.id ? await dbGet("SELECT * FROM users WHERE id = ?", [input.id]) : null)
+    ?? (normalizedEmail ? await dbGet("SELECT * FROM users WHERE email = ?", [normalizedEmail]) : null)
+    ?? (input.profileId ? await dbGet("SELECT * FROM users WHERE profile_id = ?", [input.profileId]) : null);
 
   if (existingRow) {
     const existing = mapUser(existingRow);
@@ -83,23 +72,26 @@ export async function upsertUser(input: UpsertUserInput) {
       updatedAt: now,
     };
 
-    db.prepare(`
-      UPDATE users SET
-        email = ?,
-        profile_id = ?,
-        waitlist_status = ?,
-        waitlist_sources_json = ?,
-        alert_preference = ?,
-        updated_at = ?
-      WHERE id = ?
-    `).run(
-      merged.email,
-      merged.profileId,
-      merged.waitlistStatus,
-      JSON.stringify(merged.waitlistSources),
-      merged.alertPreference,
-      merged.updatedAt,
-      merged.id,
+    await dbRun(
+      `
+        UPDATE users SET
+          email = ?,
+          profile_id = ?,
+          waitlist_status = ?,
+          waitlist_sources_json = ?,
+          alert_preference = ?,
+          updated_at = ?
+        WHERE id = ?
+      `,
+      [
+        merged.email,
+        merged.profileId,
+        merged.waitlistStatus,
+        JSON.stringify(merged.waitlistSources),
+        merged.alertPreference,
+        merged.updatedAt,
+        merged.id,
+      ],
     );
 
     return merged;
@@ -116,19 +108,22 @@ export async function upsertUser(input: UpsertUserInput) {
     updatedAt: now,
   };
 
-  db.prepare(`
-    INSERT INTO users (
-      id, email, profile_id, waitlist_status, waitlist_sources_json, alert_preference, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    created.id,
-    created.email,
-    created.profileId,
-    created.waitlistStatus,
-    JSON.stringify(created.waitlistSources),
-    created.alertPreference,
-    created.createdAt,
-    created.updatedAt,
+  await dbRun(
+    `
+      INSERT INTO users (
+        id, email, profile_id, waitlist_status, waitlist_sources_json, alert_preference, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      created.id,
+      created.email,
+      created.profileId,
+      created.waitlistStatus,
+      JSON.stringify(created.waitlistSources),
+      created.alertPreference,
+      created.createdAt,
+      created.updatedAt,
+    ],
   );
 
   return created;

@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import type { StoredTravelerProfile, TravelerProfile } from "@/lib/types";
 
 type ProfileUpdate = Partial<TravelerProfile> & {
@@ -42,22 +42,19 @@ function mapProfile(row: Record<string, unknown>): StoredTravelerProfile {
 }
 
 export async function getAllProfiles() {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM profiles ORDER BY updated_at DESC").all() as Record<string, unknown>[];
+  const rows = await dbAll("SELECT * FROM profiles ORDER BY updated_at DESC");
   return rows.map(mapProfile);
 }
 
 export async function getProfileById(id: string) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM profiles WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM profiles WHERE id = ?", [id]);
   return row ? mapProfile(row) : null;
 }
 
 export async function upsertProfile(id: string | null, update: ProfileUpdate = {}) {
-  const db = getDb();
   const now = new Date().toISOString();
   const nextId = id ?? crypto.randomUUID();
-  const existingRow = db.prepare("SELECT * FROM profiles WHERE id = ?").get(nextId) as Record<string, unknown> | undefined;
+  const existingRow = await dbGet("SELECT * FROM profiles WHERE id = ?", [nextId]);
 
   if (existingRow) {
     const existing = mapProfile(existingRow);
@@ -69,35 +66,38 @@ export async function upsertProfile(id: string | null, update: ProfileUpdate = {
       updatedAt: now,
     };
 
-    db.prepare(`
-      UPDATE profiles SET
-        home_airports_json = ?,
-        reposition_regions_json = ?,
-        preferred_cabins_json = ?,
-        max_stops = ?,
-        allow_overnight = ?,
-        max_travel_pain = ?,
-        destination_interests_json = ?,
-        budget_max = ?,
-        trip_styles_json = ?,
-        saved_deal_ids_json = ?,
-        hidden_deal_ids_json = ?,
-        updated_at = ?
-      WHERE id = ?
-    `).run(
-      JSON.stringify(merged.homeAirports),
-      JSON.stringify(merged.repositionRegions),
-      JSON.stringify(merged.preferredCabins),
-      merged.maxStops,
-      merged.allowOvernight ? 1 : 0,
-      merged.maxTravelPain,
-      JSON.stringify(merged.destinationInterests),
-      merged.budgetMax,
-      JSON.stringify(merged.tripStyles),
-      JSON.stringify(merged.savedDealIds),
-      JSON.stringify(merged.hiddenDealIds),
-      merged.updatedAt,
-      merged.id,
+    await dbRun(
+      `
+        UPDATE profiles SET
+          home_airports_json = ?,
+          reposition_regions_json = ?,
+          preferred_cabins_json = ?,
+          max_stops = ?,
+          allow_overnight = ?,
+          max_travel_pain = ?,
+          destination_interests_json = ?,
+          budget_max = ?,
+          trip_styles_json = ?,
+          saved_deal_ids_json = ?,
+          hidden_deal_ids_json = ?,
+          updated_at = ?
+        WHERE id = ?
+      `,
+      [
+        JSON.stringify(merged.homeAirports),
+        JSON.stringify(merged.repositionRegions),
+        JSON.stringify(merged.preferredCabins),
+        merged.maxStops,
+        merged.allowOvernight ? 1 : 0,
+        merged.maxTravelPain,
+        JSON.stringify(merged.destinationInterests),
+        merged.budgetMax,
+        JSON.stringify(merged.tripStyles),
+        JSON.stringify(merged.savedDealIds),
+        JSON.stringify(merged.hiddenDealIds),
+        merged.updatedAt,
+        merged.id,
+      ],
     );
 
     return merged;
@@ -114,28 +114,31 @@ export async function upsertProfile(id: string | null, update: ProfileUpdate = {
     updatedAt: now,
   };
 
-  db.prepare(`
-    INSERT INTO profiles (
-      id, home_airports_json, reposition_regions_json, preferred_cabins_json,
-      max_stops, allow_overnight, max_travel_pain, destination_interests_json,
-      budget_max, trip_styles_json, saved_deal_ids_json, hidden_deal_ids_json,
-      created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    created.id,
-    JSON.stringify(created.homeAirports),
-    JSON.stringify(created.repositionRegions),
-    JSON.stringify(created.preferredCabins),
-    created.maxStops,
-    created.allowOvernight ? 1 : 0,
-    created.maxTravelPain,
-    JSON.stringify(created.destinationInterests),
-    created.budgetMax,
-    JSON.stringify(created.tripStyles),
-    JSON.stringify(created.savedDealIds),
-    JSON.stringify(created.hiddenDealIds),
-    created.createdAt,
-    created.updatedAt,
+  await dbRun(
+    `
+      INSERT INTO profiles (
+        id, home_airports_json, reposition_regions_json, preferred_cabins_json,
+        max_stops, allow_overnight, max_travel_pain, destination_interests_json,
+        budget_max, trip_styles_json, saved_deal_ids_json, hidden_deal_ids_json,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      created.id,
+      JSON.stringify(created.homeAirports),
+      JSON.stringify(created.repositionRegions),
+      JSON.stringify(created.preferredCabins),
+      created.maxStops,
+      created.allowOvernight ? 1 : 0,
+      created.maxTravelPain,
+      JSON.stringify(created.destinationInterests),
+      created.budgetMax,
+      JSON.stringify(created.tripStyles),
+      JSON.stringify(created.savedDealIds),
+      JSON.stringify(created.hiddenDealIds),
+      created.createdAt,
+      created.updatedAt,
+    ],
   );
 
   return created;

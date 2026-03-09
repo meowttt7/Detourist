@@ -55,7 +55,8 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch {
+  } catch (error) {
+    console.error("Waitlist signup failed.", error);
     return NextResponse.json(
       { ok: false, error: "We couldn't save your email just now. Please try again." },
       { status: 500 },

@@ -7,7 +7,8 @@ Detourist is a premium travel deals product for flexible travelers who care more
 - Next.js 16
 - React 19
 - TypeScript
-- SQLite via `node:sqlite`
+- Turso/libSQL in production
+- Local file-backed libSQL for development
 - SMTP delivery with local JSON outbox fallback
 
 ## Current product surface
@@ -59,6 +60,8 @@ DETOURIST_SMTP_PASSWORD=
 DETOURIST_CRON_SECRET=
 DETOURIST_DIGEST_HOUR=
 DETOURIST_DIGEST_TIMEZONE=
+TURSO_DATABASE_URL=
+TURSO_AUTH_TOKEN=
 ```
 
 Notes:
@@ -66,7 +69,8 @@ Notes:
 - `DETOURIST_APP_URL` should be the full deployed origin, with no trailing slash.
 - `DETOURIST_CRON_SECRET` must match between the deployed app and the GitHub Actions secret.
 - `DETOURIST_DIGEST_HOUR` is interpreted in `DETOURIST_DIGEST_TIMEZONE`.
-- SQLite uses `node:sqlite`, which currently emits an `ExperimentalWarning`.
+- `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are required in Vercel for production writes.
+- Local development falls back to a file-backed database in `data/detourist.sqlite` when Turso env vars are absent.
 
 ## Daily digest scheduling
 
@@ -82,8 +86,6 @@ The endpoint is safe to trigger hourly because it:
 Full setup steps live in [docs-digest-scheduler.md](C:\Users\Meow\Documents\Detourist\docs-digest-scheduler.md).
 
 ## GitHub repo setup
-
-This local repository currently has no configured git remote, so GitHub Actions secrets cannot be attached until a remote repository exists.
 
 Typical next commands:
 
@@ -107,5 +109,6 @@ After the first push:
 - [app/api/digests/schedule/route.ts](C:\Users\Meow\Documents\Detourist\app\api\digests\schedule\route.ts)
 - [app/api/email-deliveries/retry/route.ts](C:\Users\Meow\Documents\Detourist\app\api\email-deliveries\retry\route.ts)
 - [lib/alerts.ts](C:\Users\Meow\Documents\Detourist\lib\alerts.ts)
+- [lib/db.ts](C:\Users\Meow\Documents\Detourist\lib\db.ts)
 - [lib/digests.ts](C:\Users\Meow\Documents\Detourist\lib\digests.ts)
 - [lib/scheduled-jobs.ts](C:\Users\Meow\Documents\Detourist\lib\scheduled-jobs.ts)

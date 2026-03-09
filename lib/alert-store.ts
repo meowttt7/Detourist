@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 import type { AlertChannel, AlertStatus, DealAlert } from "@/lib/types";
 
 type CreateAlertInput = {
@@ -36,14 +36,12 @@ function mapAlert(row: Record<string, unknown>): DealAlert {
 }
 
 export async function getAllAlerts() {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM alerts ORDER BY created_at DESC").all() as Record<string, unknown>[];
+  const rows = await dbAll("SELECT * FROM alerts ORDER BY created_at DESC");
   return rows.map(mapAlert);
 }
 
 export async function getAlertById(id: string) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM alerts WHERE id = ?").get(id) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM alerts WHERE id = ?", [id]);
   return row ? mapAlert(row) : null;
 }
 
@@ -52,9 +50,8 @@ export async function getAlertsByIds(ids: string[]) {
     return [];
   }
 
-  const db = getDb();
   const placeholders = ids.map(() => "?").join(", ");
-  const rows = db.prepare(`SELECT * FROM alerts WHERE id IN (${placeholders}) ORDER BY created_at DESC`).all(...ids) as Record<string, unknown>[];
+  const rows = await dbAll(`SELECT * FROM alerts WHERE id IN (${placeholders}) ORDER BY created_at DESC`, ids);
   const alertMap = new Map(rows.map((row) => {
     const alert = mapAlert(row);
     return [alert.id, alert] as const;
@@ -64,34 +61,33 @@ export async function getAlertsByIds(ids: string[]) {
 }
 
 export async function getAlertsForProfile(profileId: string) {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM alerts WHERE profile_id = ? ORDER BY created_at DESC").all(profileId) as Record<string, unknown>[];
+  const rows = await dbAll("SELECT * FROM alerts WHERE profile_id = ? ORDER BY created_at DESC", [profileId]);
   return rows.map(mapAlert);
 }
 
 export async function getPendingDigestAlertsForUser(userId: string, profileId: string) {
-  const db = getDb();
-  const rows = db.prepare(`
-    SELECT * FROM alerts
-    WHERE user_id = ?
-      AND profile_id = ?
-      AND channel = 'email'
-      AND status = 'new'
-      AND digest_delivery_id IS NULL
-    ORDER BY created_at DESC
-  `).all(userId, profileId) as Record<string, unknown>[];
+  const rows = await dbAll(
+    `
+      SELECT * FROM alerts
+      WHERE user_id = ?
+        AND profile_id = ?
+        AND channel = 'email'
+        AND status = 'new'
+        AND digest_delivery_id IS NULL
+      ORDER BY created_at DESC
+    `,
+    [userId, profileId],
+  );
   return rows.map(mapAlert);
 }
 
 export async function getAlertsForUser(userId: string) {
-  const db = getDb();
-  const rows = db.prepare("SELECT * FROM alerts WHERE user_id = ? ORDER BY created_at DESC").all(userId) as Record<string, unknown>[];
+  const rows = await dbAll("SELECT * FROM alerts WHERE user_id = ? ORDER BY created_at DESC", [userId]);
   return rows.map(mapAlert);
 }
 
 export async function createAlert(input: CreateAlertInput) {
-  const db = getDb();
-  const existing = db.prepare("SELECT * FROM alerts WHERE profile_id = ? AND deal_id = ?").get(input.profileId, input.dealId) as Record<string, unknown> | undefined;
+  const existing = await dbGet("SELECT * FROM alerts WHERE profile_id = ? AND deal_id = ?", [input.profileId, input.dealId]);
   if (existing) {
     return mapAlert(existing);
   }
@@ -115,35 +111,37 @@ export async function createAlert(input: CreateAlertInput) {
     viewedAt: null,
   };
 
-  db.prepare(`
-    INSERT INTO alerts (
-      id, deal_id, deal_slug, deal_title, profile_id, user_id, score,
-      match_label, reason_summary, channel, status, digest_delivery_id, digested_at, created_at, viewed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    alert.id,
-    alert.dealId,
-    alert.dealSlug,
-    alert.dealTitle,
-    alert.profileId,
-    alert.userId,
-    alert.score,
-    alert.matchLabel,
-    alert.reasonSummary,
-    alert.channel,
-    alert.status,
-    alert.digestDeliveryId,
-    alert.digestedAt,
-    alert.createdAt,
-    alert.viewedAt,
+  await dbRun(
+    `
+      INSERT INTO alerts (
+        id, deal_id, deal_slug, deal_title, profile_id, user_id, score,
+        match_label, reason_summary, channel, status, digest_delivery_id, digested_at, created_at, viewed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      alert.id,
+      alert.dealId,
+      alert.dealSlug,
+      alert.dealTitle,
+      alert.profileId,
+      alert.userId,
+      alert.score,
+      alert.matchLabel,
+      alert.reasonSummary,
+      alert.channel,
+      alert.status,
+      alert.digestDeliveryId,
+      alert.digestedAt,
+      alert.createdAt,
+      alert.viewedAt,
+    ],
   );
 
   return alert;
 }
 
 export async function markAlertViewed(alertId: string, profileId: string) {
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM alerts WHERE id = ? AND profile_id = ?").get(alertId, profileId) as Record<string, unknown> | undefined;
+  const row = await dbGet("SELECT * FROM alerts WHERE id = ? AND profile_id = ?", [alertId, profileId]);
   if (!row) {
     return null;
   }
@@ -153,10 +151,10 @@ export async function markAlertViewed(alertId: string, profileId: string) {
   }
 
   const viewedAt = new Date().toISOString();
-  db.prepare("UPDATE alerts SET status = 'viewed', viewed_at = ? WHERE id = ?").run(viewedAt, alertId);
+  await dbRun("UPDATE alerts SET status = 'viewed', viewed_at = ? WHERE id = ?", [viewedAt, alertId]);
 
-  const updated = db.prepare("SELECT * FROM alerts WHERE id = ?").get(alertId) as Record<string, unknown>;
-  return mapAlert(updated);
+  const updated = await dbGet("SELECT * FROM alerts WHERE id = ?", [alertId]);
+  return updated ? mapAlert(updated) : null;
 }
 
 export async function markAlertsDigested(alertIds: string[], digestDeliveryId: string) {
@@ -164,22 +162,23 @@ export async function markAlertsDigested(alertIds: string[], digestDeliveryId: s
     return [];
   }
 
-  const db = getDb();
   const digestedAt = new Date().toISOString();
   const placeholders = alertIds.map(() => "?").join(", ");
-  db.prepare(`
-    UPDATE alerts
-    SET digest_delivery_id = ?, digested_at = ?
-    WHERE id IN (${placeholders})
-  `).run(digestDeliveryId, digestedAt, ...alertIds);
+  await dbRun(
+    `
+      UPDATE alerts
+      SET digest_delivery_id = ?, digested_at = ?
+      WHERE id IN (${placeholders})
+    `,
+    [digestDeliveryId, digestedAt, ...alertIds],
+  );
 
-  const rows = db.prepare(`SELECT * FROM alerts WHERE id IN (${placeholders}) ORDER BY created_at DESC`).all(...alertIds) as Record<string, unknown>[];
+  const rows = await dbAll(`SELECT * FROM alerts WHERE id IN (${placeholders}) ORDER BY created_at DESC`, alertIds);
   return rows.map(mapAlert);
 }
 
 export async function promoteAlertsToEmail(profileId: string, userId: string) {
-  const db = getDb();
-  db.prepare("UPDATE alerts SET user_id = ?, channel = 'email' WHERE profile_id = ?").run(userId, profileId);
-  const rows = db.prepare("SELECT * FROM alerts WHERE profile_id = ? ORDER BY created_at DESC").all(profileId) as Record<string, unknown>[];
+  await dbRun("UPDATE alerts SET user_id = ?, channel = 'email' WHERE profile_id = ?", [userId, profileId]);
+  const rows = await dbAll("SELECT * FROM alerts WHERE profile_id = ? ORDER BY created_at DESC", [profileId]);
   return rows.map(mapAlert);
 }

@@ -1,52 +1,71 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import { pathToFileURL } from "node:url";
+
+import { createClient, type Client, type InArgs, type Row } from "@libsql/client";
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "detourist.sqlite");
 
-let database: DatabaseSync | null = null;
+let database: Client | null = null;
+let databasePromise: Promise<Client> | null = null;
 
-function readJsonArray<T>(fileName: string): T[] {
-  const filePath = path.join(dataDir, fileName);
-  if (!fs.existsSync(filePath)) {
-    return [];
-  }
+type DbRow = Record<string, unknown>;
 
-  try {
-    const raw = fs.readFileSync(filePath, "utf8");
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as T[]) : [];
-  } catch {
-    return [];
-  }
+function isRemoteDatabaseConfigured() {
+  return Boolean(process.env.TURSO_DATABASE_URL?.trim());
 }
 
-function getTableCount(db: DatabaseSync, tableName: string) {
-  const row = db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get() as { count?: number } | undefined;
+function getDatabaseUrl() {
+  const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
+  if (remoteUrl) {
+    return remoteUrl;
+  }
+
+  if (process.env.VERCEL) {
+    throw new Error("Turso is not configured. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in Vercel.");
+  }
+
+  fs.mkdirSync(dataDir, { recursive: true });
+  return pathToFileURL(dbPath).href;
+}
+
+function getDatabaseClient() {
+  const url = getDatabaseUrl();
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
+  return createClient(authToken ? { url, authToken } : { url });
+}
+
+function mapRow(row: Row): DbRow {
+  return Object.fromEntries(Object.entries(row)) as DbRow;
+}
+
+async function queryAllWithClient(client: Client, sql: string, args: InArgs = []) {
+  const result = await client.execute({ sql, args });
+  return result.rows.map(mapRow);
+}
+
+async function queryOneWithClient(client: Client, sql: string, args: InArgs = []) {
+  const rows = await queryAllWithClient(client, sql, args);
+  return rows[0] ?? null;
+}
+
+async function runWithClient(client: Client, sql: string, args: InArgs = []) {
+  await client.execute({ sql, args });
+}
+
+async function getTableCount(client: Client, tableName: string) {
+  const row = await queryOneWithClient(client, `SELECT COUNT(*) AS count FROM ${tableName}`);
   return Number(row?.count ?? 0);
 }
 
-function runInTransaction(db: DatabaseSync, callback: () => void) {
-  db.exec("BEGIN");
-  try {
-    callback();
-    db.exec("COMMIT");
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
-}
-
-function tableHasColumn(db: DatabaseSync, tableName: string, columnName: string) {
-  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<Record<string, unknown>>;
+async function tableHasColumn(client: Client, tableName: string, columnName: string) {
+  const rows = await queryAllWithClient(client, `PRAGMA table_info(${tableName})`);
   return rows.some((row) => String(row.name) === columnName);
 }
 
-function runMigrations(db: DatabaseSync) {
-  db.exec(`
-    PRAGMA journal_mode = WAL;
-
+async function runMigrations(client: Client) {
+  await client.executeMultiple(`
     CREATE TABLE IF NOT EXISTS deals (
       id TEXT PRIMARY KEY,
       slug TEXT NOT NULL UNIQUE,
@@ -174,53 +193,66 @@ function runMigrations(db: DatabaseSync) {
     CREATE INDEX IF NOT EXISTS idx_users_profile_id ON users (profile_id);
   `);
 
-  if (!tableHasColumn(db, "users", "alert_preference")) {
-    db.exec("ALTER TABLE users ADD COLUMN alert_preference TEXT NOT NULL DEFAULT 'instant'");
+  if (!(await tableHasColumn(client, "users", "alert_preference"))) {
+    await runWithClient(client, "ALTER TABLE users ADD COLUMN alert_preference TEXT NOT NULL DEFAULT 'instant'");
   }
 
-  if (!tableHasColumn(db, "alerts", "digest_delivery_id")) {
-    db.exec("ALTER TABLE alerts ADD COLUMN digest_delivery_id TEXT");
+  if (!(await tableHasColumn(client, "alerts", "digest_delivery_id"))) {
+    await runWithClient(client, "ALTER TABLE alerts ADD COLUMN digest_delivery_id TEXT");
   }
 
-  if (!tableHasColumn(db, "alerts", "digested_at")) {
-    db.exec("ALTER TABLE alerts ADD COLUMN digested_at TEXT");
+  if (!(await tableHasColumn(client, "alerts", "digested_at"))) {
+    await runWithClient(client, "ALTER TABLE alerts ADD COLUMN digested_at TEXT");
   }
 
-  if (!tableHasColumn(db, "email_deliveries", "kind")) {
-    db.exec("ALTER TABLE email_deliveries ADD COLUMN kind TEXT NOT NULL DEFAULT 'alert'");
+  if (!(await tableHasColumn(client, "email_deliveries", "kind"))) {
+    await runWithClient(client, "ALTER TABLE email_deliveries ADD COLUMN kind TEXT NOT NULL DEFAULT 'alert'");
   }
 
-  if (!tableHasColumn(db, "email_deliveries", "user_id")) {
-    db.exec("ALTER TABLE email_deliveries ADD COLUMN user_id TEXT");
+  if (!(await tableHasColumn(client, "email_deliveries", "user_id"))) {
+    await runWithClient(client, "ALTER TABLE email_deliveries ADD COLUMN user_id TEXT");
   }
 
-  if (!tableHasColumn(db, "email_deliveries", "retry_count")) {
-    db.exec("ALTER TABLE email_deliveries ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0");
+  if (!(await tableHasColumn(client, "email_deliveries", "retry_count"))) {
+    await runWithClient(client, "ALTER TABLE email_deliveries ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0");
   }
 
-  if (!tableHasColumn(db, "email_deliveries", "metadata_json")) {
-    db.exec("ALTER TABLE email_deliveries ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'");
+  if (!(await tableHasColumn(client, "email_deliveries", "metadata_json"))) {
+    await runWithClient(client, "ALTER TABLE email_deliveries ADD COLUMN metadata_json TEXT NOT NULL DEFAULT '{}'");
   }
 }
 
-function seedFromJson(db: DatabaseSync) {
-  const dealCount = getTableCount(db, "deals");
+function readJsonArray<T>(fileName: string): T[] {
+  const filePath = path.join(dataDir, fileName);
+  if (!fs.existsSync(filePath)) {
+    return [];
+  }
+
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function seedFromJson(client: Client) {
+  const dealCount = await getTableCount(client, "deals");
   if (dealCount === 0) {
     const deals = readJsonArray<any>("deals.json");
-    const insert = db.prepare(`
-      INSERT INTO deals (
-        id, slug, type, title, summary, origin, destination, destination_region, cabin,
-        airline_or_brand, current_price, reference_price, currency, stops,
-        total_duration_hours, overnight, reposition_required, reposition_from,
-        catch_summary, why_worth_it, booking_url, published_at, expires_at, tags_json
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )
-    `);
-
-    runInTransaction(db, () => {
-      for (const deal of deals) {
-        insert.run(
+    for (const deal of deals) {
+      await runWithClient(
+        client,
+        `
+          INSERT INTO deals (
+            id, slug, type, title, summary, origin, destination, destination_region, cabin,
+            airline_or_brand, current_price, reference_price, currency, stops,
+            total_duration_hours, overnight, reposition_required, reposition_from,
+            catch_summary, why_worth_it, booking_url, published_at, expires_at, tags_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
           deal.id,
           deal.slug,
           deal.type,
@@ -245,36 +277,34 @@ function seedFromJson(db: DatabaseSync) {
           deal.publishedAt,
           deal.expiresAt,
           JSON.stringify(deal.tags ?? []),
-        );
-      }
-    });
+        ],
+      );
+    }
   }
 
-  const waitlistCount = getTableCount(db, "waitlist_entries");
+  const waitlistCount = await getTableCount(client, "waitlist_entries");
   if (waitlistCount === 0) {
     const entries = readJsonArray<any>("waitlist.json");
-    const insert = db.prepare("INSERT INTO waitlist_entries (email, created_at, source) VALUES (?, ?, ?)");
-    runInTransaction(db, () => {
-      for (const entry of entries) {
-        insert.run(entry.email, entry.createdAt, entry.source);
-      }
-    });
+    for (const entry of entries) {
+      await runWithClient(client, "INSERT INTO waitlist_entries (email, created_at, source) VALUES (?, ?, ?)", [entry.email, entry.createdAt, entry.source]);
+    }
   }
 
-  const profileCount = getTableCount(db, "profiles");
+  const profileCount = await getTableCount(client, "profiles");
   if (profileCount === 0) {
     const profiles = readJsonArray<any>("profiles.json");
-    const insert = db.prepare(`
-      INSERT INTO profiles (
-        id, home_airports_json, reposition_regions_json, preferred_cabins_json,
-        max_stops, allow_overnight, max_travel_pain, destination_interests_json,
-        budget_max, trip_styles_json, saved_deal_ids_json, hidden_deal_ids_json,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    runInTransaction(db, () => {
-      for (const profile of profiles) {
-        insert.run(
+    for (const profile of profiles) {
+      await runWithClient(
+        client,
+        `
+          INSERT INTO profiles (
+            id, home_airports_json, reposition_regions_json, preferred_cabins_json,
+            max_stops, allow_overnight, max_travel_pain, destination_interests_json,
+            budget_max, trip_styles_json, saved_deal_ids_json, hidden_deal_ids_json,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
           profile.id,
           JSON.stringify(profile.homeAirports ?? []),
           JSON.stringify(profile.repositionRegions ?? []),
@@ -289,22 +319,23 @@ function seedFromJson(db: DatabaseSync) {
           JSON.stringify(profile.hiddenDealIds ?? []),
           profile.createdAt,
           profile.updatedAt,
-        );
-      }
-    });
+        ],
+      );
+    }
   }
 
-  const userCount = getTableCount(db, "users");
+  const userCount = await getTableCount(client, "users");
   if (userCount === 0) {
     const users = readJsonArray<any>("users.json");
-    const insert = db.prepare(`
-      INSERT INTO users (
-        id, email, profile_id, waitlist_status, waitlist_sources_json, alert_preference, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    runInTransaction(db, () => {
-      for (const user of users) {
-        insert.run(
+    for (const user of users) {
+      await runWithClient(
+        client,
+        `
+          INSERT INTO users (
+            id, email, profile_id, waitlist_status, waitlist_sources_json, alert_preference, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
           user.id,
           user.email ?? null,
           user.profileId ?? null,
@@ -313,22 +344,23 @@ function seedFromJson(db: DatabaseSync) {
           user.alertPreference ?? "instant",
           user.createdAt,
           user.updatedAt,
-        );
-      }
-    });
+        ],
+      );
+    }
   }
 
-  const eventCount = getTableCount(db, "events");
+  const eventCount = await getTableCount(client, "events");
   if (eventCount === 0) {
     const events = readJsonArray<any>("events.json");
-    const insert = db.prepare(`
-      INSERT INTO events (
-        id, type, deal_id, deal_slug, user_id, profile_id, surface, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    runInTransaction(db, () => {
-      for (const event of events) {
-        insert.run(
+    for (const event of events) {
+      await runWithClient(
+        client,
+        `
+          INSERT INTO events (
+            id, type, deal_id, deal_slug, user_id, profile_id, surface, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
           event.id,
           event.type,
           event.dealId,
@@ -337,19 +369,54 @@ function seedFromJson(db: DatabaseSync) {
           event.profileId ?? null,
           event.surface,
           event.createdAt,
-        );
-      }
-    });
+        ],
+      );
+    }
   }
 }
 
-export function getDb() {
-  if (!database) {
-    fs.mkdirSync(dataDir, { recursive: true });
-    database = new DatabaseSync(dbPath);
-    runMigrations(database);
-    seedFromJson(database);
+async function initializeDatabase() {
+  const client = getDatabaseClient();
+  await runMigrations(client);
+  await seedFromJson(client);
+  return client;
+}
+
+export async function getDb() {
+  if (database) {
+    return database;
   }
 
-  return database;
+  if (!databasePromise) {
+    databasePromise = initializeDatabase()
+      .then((client) => {
+        database = client;
+        return client;
+      })
+      .catch((error) => {
+        databasePromise = null;
+        throw error;
+      });
+  }
+
+  return databasePromise;
+}
+
+export async function dbAll(sql: string, args: InArgs = []) {
+  const client = await getDb();
+  return queryAllWithClient(client, sql, args);
+}
+
+export async function dbGet(sql: string, args: InArgs = []) {
+  const client = await getDb();
+  return queryOneWithClient(client, sql, args);
+}
+
+export async function dbRun(sql: string, args: InArgs = []) {
+  const client = await getDb();
+  return runWithClient(client, sql, args);
+}
+
+export function getDatabaseProviderLabel() {
+  return isRemoteDatabaseConfigured() ? "turso" : "local-file";
 }

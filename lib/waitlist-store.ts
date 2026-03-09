@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { dbAll, dbGet, dbRun } from "@/lib/db";
 
 export type WaitlistEntry = {
   email: string;
@@ -15,15 +15,13 @@ function mapWaitlistEntry(row: Record<string, unknown>): WaitlistEntry {
 }
 
 export async function getAllWaitlistEntries() {
-  const db = getDb();
-  const rows = db.prepare("SELECT email, created_at, source FROM waitlist_entries ORDER BY created_at DESC").all() as Record<string, unknown>[];
+  const rows = await dbAll("SELECT email, created_at, source FROM waitlist_entries ORDER BY created_at DESC");
   return rows.map(mapWaitlistEntry);
 }
 
 export async function addToWaitlist(email: string, source = "landing-page") {
-  const db = getDb();
   const normalizedEmail = email.trim().toLowerCase();
-  const existing = db.prepare("SELECT email, created_at, source FROM waitlist_entries WHERE email = ?").get(normalizedEmail) as Record<string, unknown> | undefined;
+  const existing = await dbGet("SELECT email, created_at, source FROM waitlist_entries WHERE email = ?", [normalizedEmail]);
 
   if (existing) {
     return { status: "existing" as const, entry: mapWaitlistEntry(existing) };
@@ -35,11 +33,11 @@ export async function addToWaitlist(email: string, source = "landing-page") {
     source,
   };
 
-  db.prepare("INSERT INTO waitlist_entries (email, created_at, source) VALUES (?, ?, ?)").run(
+  await dbRun("INSERT INTO waitlist_entries (email, created_at, source) VALUES (?, ?, ?)", [
     nextEntry.email,
     nextEntry.createdAt,
     nextEntry.source,
-  );
+  ]);
 
   return { status: "created" as const, entry: nextEntry };
 }
