@@ -2291,6 +2291,37 @@ input:disabled {
   text-decoration: underline;
 }
 
+.admin-duplicate-conflict {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  border: 1px solid rgba(164, 99, 39, 0.22);
+  border-radius: 20px;
+  background: rgba(164, 99, 39, 0.08);
+}
+
+.admin-duplicate-conflict h4 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+}
+
+.admin-duplicate-conflict .mini-stat-row span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-duplicate-conflict a {
+  color: var(--accent-deep);
+  text-decoration: none;
+}
+
+.admin-duplicate-conflict a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .admin-import-preview-head {
     flex-direction: column;
@@ -2300,6 +2331,7 @@ input:disabled {
     grid-template-columns: 1fr;
   }
 }
+
 
 
 

@@ -163,6 +163,8 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [importsLoading, setImportsLoading] = useState(true);
   const [importsStatus, setImportsStatus] = useState<string>("Save strong live-source candidates here while you review copy and booking links.");
   const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
+  const [publishLoading, setPublishLoading] = useState(false);
+  const [duplicateConflict, setDuplicateConflict] = useState<DuplicateMatch[]>([]);
 
   async function loadDeals() {
     setLoading(true);
@@ -235,69 +237,99 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     }
   };
 
+  const buildPublishPayload = (allowDuplicatePublish: boolean) => ({
+    ...draft,
+    allowDuplicatePublish,
+    expiresAt: new Date(draft.expiresAt).toISOString(),
+    repositionFrom: draft.repositionFrom || undefined,
+    tags: draft.tags
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+  });
+
+  const publishDeal = async (allowDuplicatePublish = false) => {
+    setPublishLoading(true);
+    setDuplicateConflict([]);
+    setStatus(allowDuplicatePublish ? "Publishing deal with duplicate override..." : "Publishing deal...");
+
+    try {
+      const response = await fetch("/api/deals", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(buildPublishPayload(allowDuplicatePublish)),
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        alertsGenerated?: number;
+        deliveryBreakdown?: DeliveryBreakdown;
+        duplicates?: DuplicateMatch[];
+        duplicateWarnings?: DuplicateMatch[];
+      };
+
+      if (!response.ok) {
+        if (response.status === 409 && payload.duplicates?.length) {
+          setDuplicateConflict(payload.duplicates);
+        }
+
+        const duplicateSummary = payload.duplicates?.length
+          ? ` Conflicts: ${payload.duplicates.map((match) => `${match.title} (${match.similarityLabel})`).join("; ")}.`
+          : "";
+        setStatus(`${payload.error ?? "Could not publish deal."}${duplicateSummary}`);
+        if (response.status === 401) {
+          router.push("/login?redirect=/admin");
+        }
+        return;
+      }
+
+      const publishedImportDraftId = activeImportDraftId;
+      let nextStatus = `Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`;
+      if (allowDuplicatePublish) {
+        nextStatus += " Duplicate override was used.";
+      }
+      if (payload.duplicateWarnings?.length) {
+        nextStatus += ` Similar live deals worth reviewing: ${payload.duplicateWarnings.map((match) => match.title).join(", ")}.`;
+      }
+
+      setDraft(defaultDraft);
+      setActiveImportDraftId(null);
+      setDuplicateConflict([]);
+
+      if (publishedImportDraftId) {
+        try {
+          await deleteImportDraftById(publishedImportDraftId);
+          setImportsStatus("Saved import removed from the queue after publish.");
+          nextStatus += " Saved import removed from queue.";
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Could not delete saved import after publish.";
+          setImportsStatus(message);
+          nextStatus += " The saved import could not be removed automatically.";
+        }
+      }
+
+      setStatus(nextStatus);
+      await Promise.all([loadDeals(), loadPreviews(), loadImportDrafts()]);
+      router.refresh();
+    } finally {
+      setPublishLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setStatus("Publishing deal...");
+    await publishDeal(false);
+  };
 
-    const response = await fetch("/api/deals", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ...draft,
-        expiresAt: new Date(draft.expiresAt).toISOString(),
-        repositionFrom: draft.repositionFrom || undefined,
-        tags: draft.tags
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean),
-      }),
-    });
+  const handleDuplicateOverride = async () => {
+    await publishDeal(true);
+  };
 
-    const payload = (await response.json()) as {
-      error?: string;
-      alertsGenerated?: number;
-      deliveryBreakdown?: DeliveryBreakdown;
-      duplicates?: DuplicateMatch[];
-      duplicateWarnings?: DuplicateMatch[];
-    };
-
-    if (!response.ok) {
-      const duplicateSummary = payload.duplicates?.length
-        ? ` Conflicts: ${payload.duplicates.map((match) => `${match.title} (${match.similarityLabel})`).join("; ")}.`
-        : "";
-      setStatus(`${payload.error ?? "Could not publish deal."}${duplicateSummary}`);
-      if (response.status === 401) {
-        router.push("/login?redirect=/admin");
-      }
-      return;
-    }
-
-    const publishedImportDraftId = activeImportDraftId;
-    let nextStatus = `Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`;
-    if (payload.duplicateWarnings?.length) {
-      nextStatus += ` Similar live deals worth reviewing: ${payload.duplicateWarnings.map((match) => match.title).join(", ")}.`;
-    }
-
-    setDraft(defaultDraft);
-    setActiveImportDraftId(null);
-
-    if (publishedImportDraftId) {
-      try {
-        await deleteImportDraftById(publishedImportDraftId);
-        setImportsStatus("Saved import removed from the queue after publish.");
-        nextStatus += " Saved import removed from queue.";
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Could not delete saved import after publish.";
-        setImportsStatus(message);
-        nextStatus += " The saved import could not be removed automatically.";
-      }
-    }
-
-    setStatus(nextStatus);
-    await Promise.all([loadDeals(), loadPreviews(), loadImportDrafts()]);
-    router.refresh();
+  const handleDismissDuplicateConflict = () => {
+    setDuplicateConflict([]);
+    setStatus("Duplicate conflict dismissed. Review the deal details before publishing again.");
   };
 
   const handleBackfill = async () => {
@@ -577,8 +609,30 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
           </div>
           <div className="form-footer">
             <p className="status-copy">{status}</p>
-            <button className="button" type="submit">Publish deal</button>
+            <button className="button" type="submit" disabled={publishLoading}>{publishLoading ? "Publishing..." : "Publish deal"}</button>
           </div>
+          {duplicateConflict.length ? (
+            <div className="admin-duplicate-conflict">
+              <p className="section-kicker">Duplicate review</p>
+              <h4>A very similar deal is already live</h4>
+              <p className="support-text">Review these conflicts before publishing. If this is an intentional refresh or replacement, you can still publish with an explicit override.</p>
+              <div className="mini-stat-list">
+                {duplicateConflict.map((match) => (
+                  <div className="mini-stat-row" key={match.dealId}>
+                    <span>
+                      <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
+                      {` | ${match.similarityLabel}`}
+                    </span>
+                    <strong>{match.currency} {match.currentPrice}</strong>
+                  </div>
+                ))}
+              </div>
+              <div className="admin-import-actions">
+                <button className="button button-secondary" type="button" onClick={handleDismissDuplicateConflict} disabled={publishLoading}>Keep editing</button>
+                <button className="button" type="button" onClick={handleDuplicateOverride} disabled={publishLoading}>{publishLoading ? "Publishing..." : "Publish anyway"}</button>
+              </div>
+            </div>
+          ) : null}
         </div>
       </form>
 
@@ -768,7 +822,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                         <span>{savedImport.review.worthItScore}</span>
                       </div>
                       <div className="admin-import-review-copy">
-                        <p className="mini-label">{savedImport.review.matchLabel} Â· {savedImport.review.savingsPercent}% below benchmark</p>
+                        <p className="mini-label">{savedImport.review.matchLabel} Ãƒâ€šÃ‚Â· {savedImport.review.savingsPercent}% below benchmark</p>
                         <p>{savedImport.payload.whyWorthIt}</p>
                       </div>
                     </div>
@@ -796,7 +850,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                             <div className="mini-stat-row" key={`${savedImport.id}-${match.dealId}`}>
                               <span>
                                 <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
-                                {` Â· ${match.similarityLabel}`}
+                                {` Ãƒâ€šÃ‚Â· ${match.similarityLabel}`}
                               </span>
                               <strong>{match.currency} {match.currentPrice}</strong>
                             </div>
@@ -838,6 +892,12 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
