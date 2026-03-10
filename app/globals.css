@@ -1707,3 +1707,29 @@ input:disabled {
     justify-items: stretch;
   }
 }
+
+.admin-smoke-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.admin-smoke-value {
+  margin: 10px 0 8px;
+  font-family: var(--serif);
+  font-size: 2rem;
+}
+
+.admin-smoke-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+@media (max-width: 900px) {
+  .admin-smoke-grid,
+  .admin-smoke-form {
+    grid-template-columns: 1fr;
+  }
+}

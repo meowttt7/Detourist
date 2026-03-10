@@ -4,6 +4,7 @@ import { ProductNav } from "@/components/product-nav";
 import { AdminDashboard } from "@/components/admin-dashboard";
 import { AdminDealManager } from "@/components/admin-deal-manager";
 import { AdminHealthPanel } from "@/components/admin-health-panel";
+import { AdminSmokePanel } from "@/components/admin-smoke-panel";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { formatDigestScheduleLabel } from "@/lib/digest-config";
 
@@ -27,6 +28,7 @@ export default async function AdminPage() {
       <section className="section product-section-tight admin-section-stack">
         <AdminDashboard />
         <AdminHealthPanel />
+        <AdminSmokePanel />
         <AdminDealManager digestScheduleLabel={digestScheduleLabel} />
       </section>
     </main>
