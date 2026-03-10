@@ -48,6 +48,17 @@ type DeliveryBreakdown = {
   failed: number;
 };
 
+type DuplicateMatch = {
+  dealId: string;
+  dealSlug: string;
+  title: string;
+  publishedAt: string;
+  currentPrice: number;
+  currency: string;
+  similarityLabel: string;
+  confidence: "high" | "medium";
+};
+
 type AlertBackfillPreview = {
   dealsConsidered: number;
   profilesConsidered: number;
@@ -248,10 +259,15 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       error?: string;
       alertsGenerated?: number;
       deliveryBreakdown?: DeliveryBreakdown;
+      duplicates?: DuplicateMatch[];
+      duplicateWarnings?: DuplicateMatch[];
     };
 
     if (!response.ok) {
-      setStatus(payload.error ?? "Could not publish deal.");
+      const duplicateSummary = payload.duplicates?.length
+        ? ` Conflicts: ${payload.duplicates.map((match) => `${match.title} (${match.similarityLabel})`).join("; ")}.`
+        : "";
+      setStatus(`${payload.error ?? "Could not publish deal."}${duplicateSummary}`);
       if (response.status === 401) {
         router.push("/login?redirect=/admin");
       }
@@ -260,6 +276,9 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
 
     const publishedImportDraftId = activeImportDraftId;
     let nextStatus = `Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`;
+    if (payload.duplicateWarnings?.length) {
+      nextStatus += ` Similar live deals worth reviewing: ${payload.duplicateWarnings.map((match) => match.title).join(", ")}.`;
+    }
 
     setDraft(defaultDraft);
     setActiveImportDraftId(null);
@@ -749,7 +768,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                         <span>{savedImport.review.worthItScore}</span>
                       </div>
                       <div className="admin-import-review-copy">
-                        <p className="mini-label">{savedImport.review.matchLabel} · {savedImport.review.savingsPercent}% below benchmark</p>
+                        <p className="mini-label">{savedImport.review.matchLabel} Â· {savedImport.review.savingsPercent}% below benchmark</p>
                         <p>{savedImport.payload.whyWorthIt}</p>
                       </div>
                     </div>
@@ -777,7 +796,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                             <div className="mini-stat-row" key={`${savedImport.id}-${match.dealId}`}>
                               <span>
                                 <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
-                                {` · ${match.similarityLabel}`}
+                                {` Â· ${match.similarityLabel}`}
                               </span>
                               <strong>{match.currency} {match.currentPrice}</strong>
                             </div>
@@ -819,6 +838,8 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     </div>
   );
 }
+
+
 
 
 
