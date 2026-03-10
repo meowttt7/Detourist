@@ -3,6 +3,8 @@ import path from "node:path";
 
 import nodemailer from "nodemailer";
 
+import { getDetouristAppUrl } from "@/lib/app-url";
+
 import type { Deal, DealAlert, EmailDeliveryMode, EmailDeliveryStatus } from "@/lib/types";
 
 const outboxPath = path.join(process.cwd(), "data", "email-outbox.json");
@@ -47,7 +49,7 @@ function usingSmtp() {
 }
 
 function getBaseUrl() {
-  return (process.env.DETOURIST_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
+  return getDetouristAppUrl();
 }
 
 function getFromAddress() {
@@ -235,3 +237,4 @@ export async function sendSigninEmail(input: SigninEmailInput): Promise<EmailSen
   const { subject, html } = renderSigninEmail(input);
   return deliverEmail(input.recipientEmail, subject, html, `signin:${input.recipientEmail}:${Date.now()}`);
 }
+

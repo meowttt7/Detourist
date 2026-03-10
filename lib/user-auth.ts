@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 import { cookies } from "next/headers";
 
+import { buildDetouristUrl } from "@/lib/app-url";
 import { dbGet, dbRun } from "@/lib/db";
 
 const userSessionCookieName = "detourist_user_session";
@@ -146,6 +147,6 @@ export async function consumeUserMagicLinkToken(rawToken: string) {
 }
 
 export function buildSigninVerifyUrl(rawToken: string) {
-  const baseUrl = (process.env.DETOURIST_APP_URL ?? "http://localhost:3000").replace(/\/$/, "");
-  return `${baseUrl}/auth/verify?token=${encodeURIComponent(rawToken)}`;
+  return buildDetouristUrl(`/auth/verify?token=${encodeURIComponent(rawToken)}`).toString();
 }
+

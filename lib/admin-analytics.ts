@@ -1,4 +1,5 @@
 import { getAllAlerts } from "@/lib/alert-store";
+import { getDetouristAppUrl } from "@/lib/app-url";
 import { getDatabaseProviderLabel } from "@/lib/db";
 import { formatDigestScheduleLabel, getDigestScheduleConfig } from "@/lib/digest-config";
 import { getAllDeals } from "@/lib/deal-store";
@@ -200,7 +201,7 @@ export async function getAdminAnalytics() {
       digestEmails,
     },
     operations: {
-      appUrl: (process.env.DETOURIST_APP_URL ?? "http://localhost:3000").replace(/\/$/, ""),
+      appUrl: getDetouristAppUrl(),
       databaseProvider: getDatabaseProviderLabel(),
       mailerMode: mailer.mode,
       fromAddress: mailer.fromAddress,
@@ -232,5 +233,4 @@ export async function getAdminAnalytics() {
     },
   };
 }
-
 

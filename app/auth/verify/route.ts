@@ -1,25 +1,35 @@
 import { NextResponse } from "next/server";
 
+import { buildDetouristUrl } from "@/lib/app-url";
 import { getProfileCookieName, getUserCookieName } from "@/lib/identity";
 import { getUserById, upsertUser } from "@/lib/user-store";
 import { consumeUserMagicLinkToken, createUserSessionToken, getUserSessionCookieName } from "@/lib/user-auth";
+
+function redirectTo(pathname: string) {
+  return NextResponse.redirect(buildDetouristUrl(pathname));
+}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const token = url.searchParams.get("token") ?? "";
 
   if (!token) {
-    return NextResponse.redirect(new URL("/sign-in?status=missing", request.url));
+    return redirectTo("/sign-in?status=missing");
+  }
+
+  const canonicalVerifyUrl = buildDetouristUrl(`/auth/verify?token=${encodeURIComponent(token)}`);
+  if (url.origin !== canonicalVerifyUrl.origin) {
+    return NextResponse.redirect(canonicalVerifyUrl);
   }
 
   const authRecord = await consumeUserMagicLinkToken(token);
   if (!authRecord) {
-    return NextResponse.redirect(new URL("/sign-in?status=invalid", request.url));
+    return redirectTo("/sign-in?status=invalid");
   }
 
   const existingUser = await getUserById(authRecord.userId);
   if (!existingUser) {
-    return NextResponse.redirect(new URL("/sign-in?status=invalid", request.url));
+    return redirectTo("/sign-in?status=invalid");
   }
 
   const storedUser = authRecord.requestedProfileId && !existingUser.profileId
@@ -31,7 +41,7 @@ export async function GET(request: Request) {
       })
     : existingUser;
 
-  const response = NextResponse.redirect(new URL("/account?status=signed-in", request.url));
+  const response = NextResponse.redirect(buildDetouristUrl("/account?status=signed-in"));
   response.cookies.set(getUserSessionCookieName(), createUserSessionToken(storedUser.id), {
     httpOnly: true,
     sameSite: "lax",
@@ -57,3 +67,4 @@ export async function GET(request: Request) {
 
   return response;
 }
+
