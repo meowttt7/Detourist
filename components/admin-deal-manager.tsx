@@ -143,6 +143,10 @@ function formatImportTimestamp(value: string) {
   return new Date(value).toLocaleString();
 }
 
+function isDealExpired(expiresAt: string) {
+  return Date.parse(expiresAt) <= Date.now();
+}
+
 export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel: string }) {
   const router = useRouter();
   const [draft, setDraft] = useState<DealDraft>(defaultDraft);
@@ -165,10 +169,11 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState<DuplicateMatch[]>([]);
+  const [dealActionLoadingId, setDealActionLoadingId] = useState<string | null>(null);
 
   async function loadDeals() {
     setLoading(true);
-    const response = await fetch("/api/deals", { cache: "no-store" });
+    const response = await fetch("/api/deals?includeExpired=1", { cache: "no-store" });
     const payload = (await response.json()) as { deals: Deal[] };
     setDeals(payload.deals);
     setLoading(false);
@@ -330,6 +335,32 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const handleDismissDuplicateConflict = () => {
     setDuplicateConflict([]);
     setStatus("Duplicate conflict dismissed. Review the deal details before publishing again.");
+  };
+
+  const handleExpireDeal = async (dealId: string, label: string) => {
+    setDealActionLoadingId(dealId);
+
+    try {
+      const response = await fetch(`/api/deals/${dealId}/expire`, {
+        method: "POST",
+      });
+
+      const payload = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        setStatus(payload.error ?? "Could not expire deal.");
+        if (response.status === 401) {
+          router.push("/login?redirect=/admin");
+        }
+        return;
+      }
+
+      setDuplicateConflict((current) => current.filter((match) => match.dealId !== dealId));
+      setStatus(`${label} expired. It will no longer appear in the live feed.`);
+      await Promise.all([loadDeals(), loadImportDrafts()]);
+      router.refresh();
+    } finally {
+      setDealActionLoadingId(null);
+    }
   };
 
   const handleBackfill = async () => {
@@ -624,6 +655,9 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                       {` | ${match.similarityLabel}`}
                     </span>
                     <strong>{match.currency} {match.currentPrice}</strong>
+                    <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(match.dealId, match.title)} disabled={dealActionLoadingId === match.dealId}>
+                      {dealActionLoadingId === match.dealId ? "Expiring..." : "Expire live deal"}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -822,7 +856,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                         <span>{savedImport.review.worthItScore}</span>
                       </div>
                       <div className="admin-import-review-copy">
-                        <p className="mini-label">{savedImport.review.matchLabel} Ãƒâ€šÃ‚Â· {savedImport.review.savingsPercent}% below benchmark</p>
+                        <p className="mini-label">{savedImport.review.matchLabel} | {savedImport.review.savingsPercent}% below benchmark</p>
                         <p>{savedImport.payload.whyWorthIt}</p>
                       </div>
                     </div>
@@ -850,7 +884,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                             <div className="mini-stat-row" key={`${savedImport.id}-${match.dealId}`}>
                               <span>
                                 <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
-                                {` Ãƒâ€šÃ‚Â· ${match.similarityLabel}`}
+                                {` | ${match.similarityLabel}`}
                               </span>
                               <strong>{match.currency} {match.currentPrice}</strong>
                             </div>
@@ -874,24 +908,41 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
           </div>
         </div>
         <div className="admin-deal-list">
-          {deals.map((deal) => (
-            <article className="mini-deal-card" key={deal.id}>
-              <div>
-                <p className="mini-label">{deal.type} | {deal.cabin}</p>
-                <h3>{deal.title}</h3>
-                <p>{deal.origin} to {deal.destination}</p>
-              </div>
-              <div className="mini-deal-meta">
-                <span>${deal.currentPrice}</span>
-                <a href={`/deals/${deal.slug}`}>Open</a>
-              </div>
-            </article>
-          ))}
+          {deals.map((deal) => {
+            const expired = isDealExpired(deal.expiresAt);
+
+            return (
+              <article className={`mini-deal-card${expired ? " mini-deal-card-expired" : ""}`} key={deal.id}>
+                <div>
+                  <p className="mini-label">{deal.type} | {deal.cabin} | {expired ? "expired" : "live"}</p>
+                  <h3>{deal.title}</h3>
+                  <p>{deal.origin} to {deal.destination}</p>
+                  <p className="support-text">Expires {new Date(deal.expiresAt).toLocaleString()}</p>
+                </div>
+                <div className="mini-deal-meta mini-deal-meta-admin">
+                  <span>${deal.currentPrice}</span>
+                  <a href={`/deals/${deal.slug}`}>Open</a>
+                  {!expired ? (
+                    <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(deal.id, deal.title)} disabled={dealActionLoadingId === deal.id}>
+                      {dealActionLoadingId === deal.id ? "Expiring..." : "Expire"}
+                    </button>
+                  ) : null}
+                </div>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

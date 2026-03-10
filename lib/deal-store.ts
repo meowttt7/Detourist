@@ -45,6 +45,11 @@ export async function getAllDeals() {
   return rows.map(mapDeal);
 }
 
+export async function getLiveDeals() {
+  const rows = await dbAll("SELECT * FROM deals WHERE expires_at > ? ORDER BY published_at DESC", [new Date().toISOString()]);
+  return rows.map(mapDeal);
+}
+
 export async function getDealById(id: string) {
   const row = await dbGet("SELECT * FROM deals WHERE id = ?", [id]);
   return row ? mapDeal(row) : null;
@@ -110,4 +115,18 @@ export async function addDeal(input: Omit<Deal, "id" | "slug" | "publishedAt">) 
   );
 
   return nextDeal;
+}
+
+export async function expireDeal(id: string) {
+  const existing = await getDealById(id);
+  if (!existing) {
+    return null;
+  }
+
+  const expiredAt = new Date().toISOString();
+  await dbRun("UPDATE deals SET expires_at = ? WHERE id = ?", [expiredAt, id]);
+  return {
+    ...existing,
+    expiresAt: expiredAt,
+  } satisfies Deal;
 }

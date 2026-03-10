@@ -1519,6 +1519,14 @@ input:disabled {
   font-size: 1.3rem;
 }
 
+.mini-deal-meta-admin {
+  align-items: end;
+}
+
+.mini-deal-card-expired {
+  opacity: 0.72;
+}
+
 .detail-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) 300px;
@@ -2331,6 +2339,7 @@ input:disabled {
     grid-template-columns: 1fr;
   }
 }
+
 
 
 

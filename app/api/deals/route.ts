@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { generateAlertsForDeal } from "@/lib/alerts";
 import { isAdminAuthenticated } from "@/lib/auth";
 import { getDuplicateMatchesForDeal, hasBlockingDuplicate } from "@/lib/deal-duplicates";
-import { addDeal, getAllDeals } from "@/lib/deal-store";
+import { addDeal, getAllDeals, getLiveDeals } from "@/lib/deal-store";
 import { Deal } from "@/lib/types";
 
 function isValidUrl(value: string) {
@@ -15,8 +15,13 @@ function isValidUrl(value: string) {
   }
 }
 
-export async function GET() {
-  const deals = await getAllDeals();
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const includeExpired = searchParams.get("includeExpired") === "1";
+  const deals = includeExpired && (await isAdminAuthenticated())
+    ? await getAllDeals()
+    : await getLiveDeals();
+
   return NextResponse.json({ deals }, { status: 200 });
 }
 
@@ -90,3 +95,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Could not create deal." }, { status: 500 });
   }
 }
+
