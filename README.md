@@ -62,6 +62,7 @@ DETOURIST_DIGEST_HOUR=
 DETOURIST_DIGEST_TIMEZONE=
 TURSO_DATABASE_URL=
 TURSO_AUTH_TOKEN=
+DETOURIST_ENABLE_BOOTSTRAP_SEED=
 ```
 
 Notes:
@@ -71,6 +72,7 @@ Notes:
 - `DETOURIST_DIGEST_HOUR` is interpreted in `DETOURIST_DIGEST_TIMEZONE`.
 - `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are required in Vercel for production writes.
 - Local development falls back to a file-backed database in `data/detourist.sqlite` when Turso env vars are absent.
+- JSON bootstrap seeding is on by default only for the local file-backed database. Remote databases stay unseeded unless `DETOURIST_ENABLE_BOOTSTRAP_SEED=true` is set explicitly.
 
 ## Daily digest scheduling
 
@@ -116,4 +118,6 @@ After the first push:
 - [lib/db.ts](C:\Users\Meow\Documents\Detourist\lib\db.ts)
 - [lib/digests.ts](C:\Users\Meow\Documents\Detourist\lib\digests.ts)
 - [lib/scheduled-jobs.ts](C:\Users\Meow\Documents\Detourist\lib\scheduled-jobs.ts)
+
+
 

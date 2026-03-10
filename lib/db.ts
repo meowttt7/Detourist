@@ -16,6 +16,41 @@ function isRemoteDatabaseConfigured() {
   return Boolean(process.env.TURSO_DATABASE_URL?.trim());
 }
 
+function getBootstrapSeedOverride() {
+  const value = process.env.DETOURIST_ENABLE_BOOTSTRAP_SEED?.trim().toLowerCase();
+  if (value === "true") {
+    return true;
+  }
+
+  if (value === "false") {
+    return false;
+  }
+
+  return null;
+}
+
+export function shouldSeedDatabaseFromJson() {
+  const override = getBootstrapSeedOverride();
+  if (override !== null) {
+    return override;
+  }
+
+  return !isRemoteDatabaseConfigured();
+}
+
+export function getBootstrapSeedModeLabel() {
+  const override = getBootstrapSeedOverride();
+  if (override === true) {
+    return "forced-on";
+  }
+
+  if (override === false) {
+    return "forced-off";
+  }
+
+  return isRemoteDatabaseConfigured() ? "remote-default-off" : "local-default-on";
+}
+
 function getDatabaseUrl() {
   const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
   if (remoteUrl) {
@@ -378,7 +413,9 @@ async function seedFromJson(client: Client) {
 async function initializeDatabase() {
   const client = getDatabaseClient();
   await runMigrations(client);
-  await seedFromJson(client);
+  if (shouldSeedDatabaseFromJson()) {
+    await seedFromJson(client);
+  }
   return client;
 }
 
@@ -420,3 +457,5 @@ export async function dbRun(sql: string, args: InArgs = []) {
 export function getDatabaseProviderLabel() {
   return isRemoteDatabaseConfigured() ? "turso" : "local-file";
 }
+
+

@@ -38,12 +38,14 @@ DETOURIST_DIGEST_HOUR=8
 DETOURIST_DIGEST_TIMEZONE=UTC
 TURSO_DATABASE_URL=
 TURSO_AUTH_TOKEN=
+DETOURIST_ENABLE_BOOTSTRAP_SEED=
 ```
 
 Rules:
 
 - `DETOURIST_APP_URL` should be the exact canonical public origin, with no trailing slash.
 - `DETOURIST_CRON_SECRET` must match GitHub Actions exactly.
+- Leave `DETOURIST_ENABLE_BOOTSTRAP_SEED` unset in production unless you are intentionally bootstrapping a non-critical remote environment.
 - Any change to Vercel env vars should be followed by a redeploy and smoke test.
 
 ### GitHub Actions
@@ -216,3 +218,5 @@ Use this when you want a quick confidence check in under ten minutes:
 4. `/admin` health snapshot
 5. `/admin` failed email deliveries filter
 6. Optional manual `Detourist Daily Digests` workflow run
+
+

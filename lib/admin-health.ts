@@ -1,4 +1,4 @@
-import { dbGet, getDatabaseProviderLabel } from "@/lib/db";
+import { dbGet, getBootstrapSeedModeLabel, getDatabaseProviderLabel, shouldSeedDatabaseFromJson } from "@/lib/db";
 import { getDigestScheduleConfig, formatDigestScheduleLabel } from "@/lib/digest-config";
 import { usingFallbackAdminCredentials } from "@/lib/auth";
 import { getMailerConfigSummary } from "@/lib/mailer";
@@ -45,6 +45,8 @@ async function buildDatabaseCheck(): Promise<HealthCheck> {
   const details = [`provider=${provider}`];
   const hasTursoUrl = Boolean(process.env.TURSO_DATABASE_URL?.trim());
   const hasTursoToken = Boolean(process.env.TURSO_AUTH_TOKEN?.trim());
+  const bootstrapSeedEnabled = shouldSeedDatabaseFromJson();
+  details.push(`bootstrap_seed=${getBootstrapSeedModeLabel()}`);
 
   if (hasTursoUrl) {
     details.push(`turso_auth_token=${hasTursoToken ? "present" : "missing"}`);
@@ -59,6 +61,16 @@ async function buildDatabaseCheck(): Promise<HealthCheck> {
         label: "Database",
         status: "warn",
         summary: "Database responds, but production appears to use local-file storage.",
+        details,
+      };
+    }
+
+    if (provider !== "local-file" && isProductionRuntime() && bootstrapSeedEnabled) {
+      return {
+        key: "database",
+        label: "Database",
+        status: "warn",
+        summary: "Database responds, but JSON bootstrap seeding is enabled for a remote database.",
         details,
       };
     }
