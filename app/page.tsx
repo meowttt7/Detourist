@@ -12,6 +12,24 @@ const heroHighlights = [
   "Worth-It Score explains the tradeoff fast",
 ];
 
+const heroScenes = [
+  {
+    title: "Paris arrival",
+    detail: "Business-class comfort without business-class pricing",
+    className: "hero-scene-paris",
+  },
+  {
+    title: "Tokyo detour",
+    detail: "A clever reposition can unlock a whole better cabin",
+    className: "hero-scene-tokyo",
+  },
+  {
+    title: "Riverside stay",
+    detail: "Luxury hotel pricing that behaves like an error",
+    className: "hero-scene-bangkok",
+  },
+];
+
 const steps = [
   {
     title: "Set your detour tolerance",
@@ -74,10 +92,10 @@ const scoreBreakdown = [
 ];
 
 const audience = [
-  "You check more than one airport before booking.",
-  "You will take the extra stop if the value is obvious.",
-  "You care about premium comfort, just not at any price.",
-  "You like the smarter route more than the obvious one.",
+  "You check more than one airport before booking",
+  "You will take the extra stop if the value is obvious",
+  "You care about premium comfort, just not at any price",
+  "You like the smarter route more than the obvious one",
 ];
 
 const pricing = [
@@ -122,9 +140,7 @@ export default function Home() {
         <div className="hero-copy">
           <p className="eyebrow">Premium deals for flexible travelers</p>
           <h1>Luxury travel deals that make the detour worth it.</h1>
-          <p className="hero-text">
-            Detourist finds premium fares and luxury stays where flexibility unlocks outsized value.
-          </p>
+          <p className="hero-text">Detourist finds premium fares and luxury stays where flexibility unlocks outsized value.</p>
           <div id="waitlist">
             <WaitlistForm source="hero" />
           </div>
@@ -137,6 +153,23 @@ export default function Home() {
         </div>
 
         <div className="hero-panel">
+          <div className="hero-card hero-visual-card">
+            <div className="hero-visual-grid">
+              {heroScenes.map((scene, index) => (
+                <article
+                  className={index === 0 ? `hero-scene-card hero-scene-card-large ${scene.className}` : `hero-scene-card ${scene.className}`}
+                  key={scene.title}
+                >
+                  <div className="hero-scene-overlay" />
+                  <div className="hero-scene-copy">
+                    <p className="mini-label">{scene.title}</p>
+                    <strong>{scene.detail}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
           <div className="hero-card hero-score-card">
             <p className="mini-label">Worth-It signal</p>
             <div className="score-badge large">
@@ -146,6 +179,7 @@ export default function Home() {
             <p className="hero-card-title">Singapore to Paris in business class</p>
             <p className="hero-card-copy">Huge savings. Mild pain. Strong fit.</p>
           </div>
+
           <div className="hero-card hero-stat-card">
             <div>
               <p className="mini-label">What Detourist catches</p>
@@ -171,7 +205,7 @@ export default function Home() {
         <p className="section-kicker">Built for Detourists</p>
         <div className="split-section">
           <h2>Made for travelers who already know the obvious route is not always the smart one.</h2>
-          <p>Better comfort, stronger value, clearer tradeoffs.</p>
+          <p>Better comfort. Stronger value. Clearer tradeoffs.</p>
         </div>
         <div className="pill-grid">
           {audience.map((item) => (
@@ -187,7 +221,7 @@ export default function Home() {
         <div className="split-section">
           <div>
             <h2>Tell us your tolerance. We filter for the upside.</h2>
-            <p>Detourist is not hunting for the cheapest option. It is hunting for premium value that clears your bar.</p>
+            <p>Not the cheapest option. The premium option that still clears your bar.</p>
           </div>
         </div>
         <div className="steps-grid">
@@ -295,10 +329,7 @@ export default function Home() {
         </div>
         <div className="pricing-grid">
           {pricing.map((plan) => (
-            <article
-              className={plan.featured ? "pricing-card pricing-card-featured" : "pricing-card"}
-              key={plan.name}
-            >
+            <article className={plan.featured ? "pricing-card pricing-card-featured" : "pricing-card"} key={plan.name}>
               <p className="mini-label">{plan.featured ? "Most aligned" : "Start here"}</p>
               <h3>{plan.name}</h3>
               <p>{plan.subtitle}</p>
