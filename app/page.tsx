@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { WaitlistForm } from "@/components/waitlist-form";
 
 const navItems = [
@@ -17,16 +19,22 @@ const heroScenes = [
     title: "Paris arrival",
     detail: "Business-class comfort without business-class pricing",
     className: "hero-scene-paris",
+    imageSrc: "/images/paris-arrival.svg",
+    imageAlt: "Stylized Paris arrival scene at golden hour",
   },
   {
     title: "Tokyo detour",
     detail: "A clever reposition can unlock a whole better cabin",
     className: "hero-scene-tokyo",
+    imageSrc: "/images/tokyo-first.svg",
+    imageAlt: "Stylized premium Tokyo flight scene",
   },
   {
     title: "Riverside stay",
     detail: "Luxury hotel pricing that behaves like an error",
     className: "hero-scene-bangkok",
+    imageSrc: "/images/bangkok-riverside.svg",
+    imageAlt: "Stylized Bangkok riverside hotel scene",
   },
 ];
 
@@ -63,6 +71,8 @@ const deals = [
     score: 91,
     catchText: "One overnight layover in Doha",
     valueText: "A premium-cabin fare at roughly 42% of the usual price.",
+    imageSrc: "/images/paris-arrival.svg",
+    imageAlt: "Paris premium flight illustration",
   },
   {
     title: "Sydney to Tokyo",
@@ -72,6 +82,8 @@ const deals = [
     score: 88,
     catchText: "Requires a reposition to Kuala Lumpur",
     valueText: "A true cabin upgrade without the normal first-class premium.",
+    imageSrc: "/images/tokyo-first.svg",
+    imageAlt: "Tokyo premium flight illustration",
   },
   {
     title: "Bangkok Riverside Stay",
@@ -81,6 +93,8 @@ const deals = [
     score: 84,
     catchText: "Weekday-only availability",
     valueText: "Luxury pricing that behaves like an off-market rate.",
+    imageSrc: "/images/bangkok-riverside.svg",
+    imageAlt: "Bangkok luxury hotel illustration",
   },
 ];
 
@@ -160,6 +174,13 @@ export default function Home() {
                   className={index === 0 ? `hero-scene-card hero-scene-card-large ${scene.className}` : `hero-scene-card ${scene.className}`}
                   key={scene.title}
                 >
+                  <Image
+                    src={scene.imageSrc}
+                    alt={scene.imageAlt}
+                    fill
+                    className="hero-scene-image"
+                    sizes={index === 0 ? "(max-width: 840px) 100vw, 36vw" : "(max-width: 840px) 100vw, 18vw"}
+                  />
                   <div className="hero-scene-overlay" />
                   <div className="hero-scene-copy">
                     <p className="mini-label">{scene.title}</p>
@@ -298,22 +319,28 @@ export default function Home() {
         <div className="deal-grid">
           {deals.map((deal) => (
             <article className="deal-card" key={deal.title}>
-              <div className="deal-card-top">
-                <div>
-                  <p className="mini-label">{deal.subtitle}</p>
-                  <h3>{deal.title}</h3>
-                </div>
-                <div className="score-badge">
-                  <span>{deal.score}</span>
+              <div className="deal-card-media">
+                <Image src={deal.imageSrc} alt={deal.imageAlt} fill className="deal-card-image" sizes="(max-width: 1024px) 100vw, 30vw" />
+                <div className="deal-card-media-overlay" />
+                <div className="deal-card-top">
+                  <div>
+                    <p className="mini-label">{deal.subtitle}</p>
+                    <h3>{deal.title}</h3>
+                  </div>
+                  <div className="score-badge">
+                    <span>{deal.score}</span>
+                  </div>
                 </div>
               </div>
-              <p className="deal-price">{deal.price}</p>
-              <p className="deal-reference">{deal.reference}</p>
-              <div className="deal-divider" />
-              <p className="deal-label">The catch</p>
-              <p className="deal-copy">{deal.catchText}</p>
-              <p className="deal-label">Why it clears the bar</p>
-              <p className="deal-value">{deal.valueText}</p>
+              <div className="deal-card-body">
+                <p className="deal-price">{deal.price}</p>
+                <p className="deal-reference">{deal.reference}</p>
+                <div className="deal-divider" />
+                <p className="deal-label">The catch</p>
+                <p className="deal-copy">{deal.catchText}</p>
+                <p className="deal-label">Why it clears the bar</p>
+                <p className="deal-value">{deal.valueText}</p>
+              </div>
             </article>
           ))}
         </div>
