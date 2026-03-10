@@ -1563,6 +1563,47 @@ input:disabled {
   justify-content: flex-end;
 }
 
+.admin-delivery-group {
+  border-top: 1px solid rgba(29, 42, 42, 0.08);
+}
+
+.admin-delivery-group .admin-table-row-deliveries {
+  border-top: none;
+}
+
+.admin-delivery-action-stack {
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.admin-delivery-detail-card {
+  margin: 0 0 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(29, 42, 42, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.admin-delivery-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-delivery-detail-grid p,
+.admin-delivery-error-block p {
+  margin: 8px 0 0;
+  color: var(--muted-strong);
+  word-break: break-word;
+}
+
+.admin-delivery-error-block {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(159, 58, 45, 0.08);
+}
+
 .admin-inline-status {
   margin-top: 16px;
 }
@@ -1575,6 +1616,14 @@ input:disabled {
 
   .admin-delivery-action {
     justify-content: flex-start;
+  }
+
+  .admin-delivery-action-stack {
+    align-items: stretch;
+  }
+
+  .admin-delivery-detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1737,4 +1786,5 @@ input:disabled {
 .admin-preview-copy {
   margin-top: 12px;
 }
+
 

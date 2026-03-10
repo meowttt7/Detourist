@@ -35,9 +35,18 @@ function matchesSearch(delivery: EmailDelivery, search: string) {
     delivery.kind,
     delivery.mode,
     delivery.status,
+    delivery.errorMessage ?? "",
   ].join(" ").toLowerCase();
 
   return haystack.includes(search);
+}
+
+function formatTimestamp(value: string | null) {
+  if (!value) {
+    return "Not available";
+  }
+
+  return new Date(value).toLocaleString();
 }
 
 export function AdminEmailDeliveries({ initialDeliveries }: AdminEmailDeliveriesProps) {
@@ -45,6 +54,7 @@ export function AdminEmailDeliveries({ initialDeliveries }: AdminEmailDeliveries
   const [deliveries, setDeliveries] = useState(initialDeliveries);
   const [status, setStatus] = useState<string>("");
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [kindFilter, setKindFilter] = useState<"all" | EmailDeliveryKind>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | EmailDeliveryStatus>("all");
@@ -84,9 +94,14 @@ export function AdminEmailDeliveries({ initialDeliveries }: AdminEmailDeliveries
     }
 
     setDeliveries((current) => current.map((delivery) => (delivery.id === payload.delivery?.id ? payload.delivery : delivery)));
+    setExpandedId(payload.delivery.id);
     setStatus(`Retried ${payload.delivery.kind} email for ${payload.delivery.recipientEmail}.`);
     setPendingId(null);
     router.refresh();
+  }
+
+  function toggleExpanded(deliveryId: string) {
+    setExpandedId((current) => (current === deliveryId ? null : deliveryId));
   }
 
   return (
@@ -105,7 +120,7 @@ export function AdminEmailDeliveries({ initialDeliveries }: AdminEmailDeliveries
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="recipient, subject, status, reference..."
+            placeholder="recipient, subject, error, status, reference..."
           />
         </label>
         <label className="field-label admin-delivery-filter">
@@ -142,27 +157,69 @@ export function AdminEmailDeliveries({ initialDeliveries }: AdminEmailDeliveries
         {filteredDeliveries.length ? (
           filteredDeliveries.map((delivery) => {
             const retryable = delivery.status === "queued" || delivery.status === "failed";
+            const expanded = expandedId === delivery.id;
+            const hasDetails = Boolean(delivery.errorMessage || delivery.subject || delivery.referenceId || delivery.sentAt || delivery.createdAt);
+
             return (
-              <div className="admin-table-row admin-table-row-deliveries" key={delivery.id}>
-                <span>{delivery.recipientEmail}</span>
-                <span>{delivery.kind}</span>
-                <span>{delivery.mode}</span>
-                <span>{delivery.status}</span>
-                <span>{delivery.retryCount}</span>
-                <div className="admin-delivery-action">
-                  {retryable ? (
-                    <button
-                      className="button button-secondary button-small"
-                      type="button"
-                      disabled={pendingId === delivery.id}
-                      onClick={() => void handleRetry(delivery.id)}
-                    >
-                      {pendingId === delivery.id ? "Retrying..." : "Retry"}
-                    </button>
-                  ) : (
-                    <span className="support-text">No action</span>
-                  )}
+              <div className="admin-delivery-group" key={delivery.id}>
+                <div className="admin-table-row admin-table-row-deliveries">
+                  <span>{delivery.recipientEmail}</span>
+                  <span>{delivery.kind}</span>
+                  <span>{delivery.mode}</span>
+                  <span>{delivery.status}</span>
+                  <span>{delivery.retryCount}</span>
+                  <div className="admin-delivery-action admin-delivery-action-stack">
+                    {hasDetails ? (
+                      <button
+                        className="button button-small button-ghost"
+                        type="button"
+                        onClick={() => toggleExpanded(delivery.id)}
+                      >
+                        {expanded ? "Hide details" : "View details"}
+                      </button>
+                    ) : null}
+                    {retryable ? (
+                      <button
+                        className="button button-secondary button-small"
+                        type="button"
+                        disabled={pendingId === delivery.id}
+                        onClick={() => void handleRetry(delivery.id)}
+                      >
+                        {pendingId === delivery.id ? "Retrying..." : "Retry"}
+                      </button>
+                    ) : (
+                      <span className="support-text">No action</span>
+                    )}
+                  </div>
                 </div>
+                {expanded ? (
+                  <div className="admin-delivery-detail-card">
+                    <div className="admin-delivery-detail-grid">
+                      <div>
+                        <span className="section-kicker">Subject</span>
+                        <p>{delivery.subject}</p>
+                      </div>
+                      <div>
+                        <span className="section-kicker">Reference</span>
+                        <p>{delivery.referenceId}</p>
+                      </div>
+                      <div>
+                        <span className="section-kicker">Created</span>
+                        <p>{formatTimestamp(delivery.createdAt)}</p>
+                      </div>
+                      <div>
+                        <span className="section-kicker">Sent</span>
+                        <p>{formatTimestamp(delivery.sentAt)}</p>
+                      </div>
+                    </div>
+                    {delivery.errorMessage ? (
+                      <div className="admin-delivery-error-block">
+                        <span className="section-kicker">Error</span>
+                        <p>{delivery.errorMessage}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             );
           })
