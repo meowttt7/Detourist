@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { Deal } from "@/lib/types";
-import type { DealImportPreviewResult, ImportedDealCandidate, SourceTravelClass } from "@/lib/sources/types";
+import type { DealImportPreviewResult, ImportedDealCandidate, ImportedDealDraft, SourceTravelClass } from "@/lib/sources/types";
 
 type DealDraft = {
   type: "flight" | "hotel";
@@ -128,6 +128,10 @@ function summarizeDelivery(delivery: DeliveryBreakdown | undefined) {
   return `${delivery.sent} sent, ${delivery.queued} queued, ${delivery.failed} failed`;
 }
 
+function formatImportTimestamp(value: string) {
+  return new Date(value).toLocaleString();
+}
+
 export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel: string }) {
   const router = useRouter();
   const [draft, setDraft] = useState<DealDraft>(defaultDraft);
@@ -144,6 +148,10 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [amadeusPreview, setAmadeusPreview] = useState<DealImportPreviewResult | null>(null);
   const [amadeusLoading, setAmadeusLoading] = useState(false);
   const [amadeusStatus, setAmadeusStatus] = useState<string>("Preview live-source fares, then load one into the publish form for review.");
+  const [savedImports, setSavedImports] = useState<ImportedDealDraft[]>([]);
+  const [importsLoading, setImportsLoading] = useState(true);
+  const [importsStatus, setImportsStatus] = useState<string>("Save strong live-source candidates here while you review copy and booking links.");
+  const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
 
   async function loadDeals() {
     setLoading(true);
@@ -151,6 +159,28 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     const payload = (await response.json()) as { deals: Deal[] };
     setDeals(payload.deals);
     setLoading(false);
+  }
+
+  async function loadImportDrafts() {
+    setImportsLoading(true);
+
+    try {
+      const response = await fetch("/api/admin/sources/imports", { cache: "no-store" });
+      const payload = (await response.json()) as { drafts?: ImportedDealDraft[]; error?: string };
+
+      if (!response.ok) {
+        setSavedImports([]);
+        setImportsStatus(payload.error ?? "Could not load saved import drafts.");
+        if (response.status === 401) {
+          router.push("/login?redirect=/admin");
+        }
+        return;
+      }
+
+      setSavedImports(payload.drafts ?? []);
+    } finally {
+      setImportsLoading(false);
+    }
   }
 
   async function loadPreviews() {
@@ -177,7 +207,22 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   useEffect(() => {
     void loadDeals();
     void loadPreviews();
+    void loadImportDrafts();
   }, []);
+
+  const deleteImportDraftById = async (draftId: string) => {
+    const response = await fetch(`/api/admin/sources/imports?id=${encodeURIComponent(draftId)}`, {
+      method: "DELETE",
+    });
+
+    const payload = (await response.json()) as { success?: boolean; error?: string };
+    if (!response.ok) {
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      throw new Error(payload.error ?? "Could not delete saved import.");
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -213,9 +258,26 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       return;
     }
 
+    const publishedImportDraftId = activeImportDraftId;
+    let nextStatus = `Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`;
+
     setDraft(defaultDraft);
-    setStatus(`Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`);
-    await Promise.all([loadDeals(), loadPreviews()]);
+    setActiveImportDraftId(null);
+
+    if (publishedImportDraftId) {
+      try {
+        await deleteImportDraftById(publishedImportDraftId);
+        setImportsStatus("Saved import removed from the queue after publish.");
+        nextStatus += " Saved import removed from queue.";
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not delete saved import after publish.";
+        setImportsStatus(message);
+        nextStatus += " The saved import could not be removed automatically.";
+      }
+    }
+
+    setStatus(nextStatus);
+    await Promise.all([loadDeals(), loadPreviews(), loadImportDrafts()]);
     router.refresh();
   };
 
@@ -325,7 +387,47 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     setAmadeusStatus(`Loaded ${payload.candidates.length} live-source candidates from Amadeus.`);
   };
 
-  const applyImportCandidate = (candidate: ImportedDealCandidate) => {
+  const handleSaveImportCandidate = async (candidate: ImportedDealCandidate) => {
+    setImportsStatus("Saving live-source candidate...");
+
+    const response = await fetch("/api/admin/sources/imports", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(candidate),
+    });
+
+    const payload = (await response.json()) as { draft?: ImportedDealDraft; error?: string };
+    if (!response.ok) {
+      setImportsStatus(payload.error ?? "Could not save import draft.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      return;
+    }
+
+    setImportsStatus(`Saved ${payload.draft?.payload.title ?? candidate.payload.title} to the review queue.`);
+    await loadImportDrafts();
+  };
+
+  const handleDeleteImportDraft = async (draftId: string) => {
+    setImportsStatus("Removing saved import...");
+
+    try {
+      await deleteImportDraftById(draftId);
+      if (activeImportDraftId === draftId) {
+        setActiveImportDraftId(null);
+      }
+      setImportsStatus("Saved import removed from the queue.");
+      await loadImportDrafts();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not delete saved import.";
+      setImportsStatus(message);
+    }
+  };
+
+  const applyImportCandidate = (candidate: ImportedDealCandidate, importDraftId: string | null = null) => {
     setDraft({
       type: candidate.payload.type,
       title: candidate.payload.title,
@@ -349,7 +451,12 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       expiresAt: candidate.payload.expiresAt.slice(0, 16),
       tags: candidate.payload.tags.join(", "),
     });
-    setStatus("Live-source candidate loaded into the publish form. Add a public booking URL before publishing.");
+    setActiveImportDraftId(importDraftId);
+    setStatus(
+      importDraftId
+        ? "Saved import loaded into the publish form. Add a public booking URL before publishing."
+        : "Live-source candidate loaded into the publish form. Add a public booking URL before publishing.",
+    );
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -567,9 +674,14 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                       <h4>{candidate.payload.title}</h4>
                       <p>{candidate.sourceSummary}</p>
                     </div>
-                    <button className="button button-small button-secondary" type="button" onClick={() => applyImportCandidate(candidate)}>
-                      Use in publish form
-                    </button>
+                    <div className="admin-import-actions">
+                      <button className="button button-small button-secondary" type="button" onClick={() => handleSaveImportCandidate(candidate)}>
+                        Save to queue
+                      </button>
+                      <button className="button button-small button-secondary" type="button" onClick={() => applyImportCandidate(candidate)}>
+                        Use in publish form
+                      </button>
+                    </div>
                   </div>
                   <div className="mini-stat-list admin-inline-summary-list">
                     <div className="mini-stat-row">
@@ -599,6 +711,56 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
               ))}
             </div>
           ) : null}
+          <div className="admin-import-queue">
+            <div className="section-heading-row product-heading-row">
+              <div>
+                <p className="section-kicker">Saved queue</p>
+                <h3>{importsLoading ? "Loading..." : `${savedImports.length} saved candidates`}</h3>
+              </div>
+            </div>
+            <p className="status-copy">{importsStatus}</p>
+            {importsLoading ? (
+              <p className="support-text">Loading saved imports...</p>
+            ) : savedImports.length ? (
+              <div className="admin-import-preview-list">
+                {savedImports.map((savedImport) => (
+                  <article className={`admin-import-preview-card${activeImportDraftId === savedImport.id ? " is-active" : ""}`} key={savedImport.id}>
+                    <div className="admin-import-preview-head">
+                      <div>
+                        <p className="mini-label">{savedImport.sourceLabel}</p>
+                        <h4>{savedImport.payload.title}</h4>
+                        <p>{savedImport.sourceSummary}</p>
+                      </div>
+                      <div className="admin-import-actions">
+                        <button className="button button-small button-secondary" type="button" onClick={() => applyImportCandidate(savedImport, savedImport.id)}>
+                          Load into publish form
+                        </button>
+                        <button className="button button-small button-secondary" type="button" onClick={() => handleDeleteImportDraft(savedImport.id)}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div className="admin-import-meta">
+                      <span>Saved {formatImportTimestamp(savedImport.createdAt)}</span>
+                      <span>{savedImport.payload.currency} {savedImport.payload.currentPrice} vs {savedImport.payload.referencePrice}</span>
+                    </div>
+                    <div className="reason-stack account-tag-row">
+                      {savedImport.payload.tags.map((tag) => (
+                        <span className="insight-pill" key={`${savedImport.id}-${tag}`}>{tag}</span>
+                      ))}
+                    </div>
+                    <div className="admin-import-notes">
+                      {savedImport.reviewNotes.map((note) => (
+                        <p key={`${savedImport.id}-${note}`}>{note}</p>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="support-text">No saved candidates yet. Save the best live fares here while you finish copy and booking links.</p>
+            )}
+          </div>
         </div>
 
         <div className="section-heading-row product-heading-row">
@@ -626,3 +788,12 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

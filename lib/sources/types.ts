@@ -1,6 +1,8 @@
 import type { Deal } from "@/lib/types";
 
 export type SourceTravelClass = "ECONOMY" | "PREMIUM_ECONOMY" | "BUSINESS" | "FIRST";
+export type DealImportSource = "amadeus";
+export type ImportedDealPayload = Omit<Deal, "id" | "slug" | "publishedAt">;
 
 export type FlightOfferSearchInput = {
   originLocationCode: string;
@@ -17,11 +19,11 @@ export type FlightOfferSearchInput = {
 
 export type ImportedDealCandidate = {
   id: string;
-  source: "amadeus";
+  source: DealImportSource;
   sourceLabel: string;
   sourceSummary: string;
   reviewNotes: string[];
-  payload: Omit<Deal, "id" | "slug" | "publishedAt">;
+  payload: ImportedDealPayload;
 };
 
 export type DealImportPreviewResult = {
@@ -29,4 +31,9 @@ export type DealImportPreviewResult = {
   query: FlightOfferSearchInput;
   warnings: string[];
   candidates: ImportedDealCandidate[];
+};
+
+export type ImportedDealDraft = ImportedDealCandidate & {
+  createdAt: string;
+  updatedAt: string;
 };

@@ -222,6 +222,17 @@ async function runMigrations(client: Client) {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS imported_deal_drafts (
+      id TEXT PRIMARY KEY,
+      source TEXT NOT NULL,
+      source_label TEXT NOT NULL,
+      source_summary TEXT NOT NULL,
+      review_notes_json TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_profile_deal ON alerts (profile_id, deal_id);
     CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts (created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON alerts (user_id);
@@ -232,6 +243,8 @@ async function runMigrations(client: Client) {
     CREATE INDEX IF NOT EXISTS idx_user_auth_tokens_expires_at ON user_auth_tokens (expires_at);
     CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_kind_created_at ON scheduled_job_runs (kind, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_status ON scheduled_job_runs (status);
+    CREATE INDEX IF NOT EXISTS idx_imported_deal_drafts_updated_at ON imported_deal_drafts (updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_imported_deal_drafts_source ON imported_deal_drafts (source);
     CREATE INDEX IF NOT EXISTS idx_deals_published_at ON deals (published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_deals_slug ON deals (slug);
     CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC);
@@ -468,6 +481,7 @@ export async function dbRun(sql: string, args: InArgs = []) {
 export function getDatabaseProviderLabel() {
   return isRemoteDatabaseConfigured() ? "turso" : "local-file";
 }
+
 
 
 
