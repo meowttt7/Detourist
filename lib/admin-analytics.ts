@@ -142,7 +142,7 @@ export async function getAdminAnalytics() {
     createdAt: alert.createdAt,
   }));
 
-  const recentEmailDeliveries = emailDeliveries.slice(0, 8);
+  const recentEmailDeliveries = emailDeliveries.slice(0, 40);
   const recentWaitlistIdentities = waitlist.slice(0, 10).map((entry) => {
     const matchedUser = usersByEmail.get(entry.email.toLowerCase()) ?? null;
     const hasLinkedProfile = Boolean(matchedUser?.profileId && profileIds.has(matchedUser.profileId));
@@ -232,4 +232,5 @@ export async function getAdminAnalytics() {
     },
   };
 }
+
 
