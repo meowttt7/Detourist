@@ -2261,10 +2261,46 @@ input:disabled {
   box-shadow: 0 16px 40px rgba(164, 99, 39, 0.1);
 }
 
+.admin-import-review-band {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: center;
+}
+
+.admin-import-review-copy p {
+  margin: 0;
+}
+
+.admin-import-review-copy p + p {
+  margin-top: 6px;
+  color: var(--muted-strong);
+}
+
+.admin-import-duplicates {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-import-duplicates a {
+  color: var(--accent-deep);
+  text-decoration: none;
+}
+
+.admin-import-duplicates a:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .admin-import-preview-head {
     flex-direction: column;
   }
+
+  .admin-import-review-band {
+    grid-template-columns: 1fr;
+  }
 }
+
+
 
 

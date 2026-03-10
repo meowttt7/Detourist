@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { Deal } from "@/lib/types";
-import type { DealImportPreviewResult, ImportedDealCandidate, ImportedDealDraft, SourceTravelClass } from "@/lib/sources/types";
+import type { DealImportPreviewResult, ImportedDealCandidate, ImportedDealDraft, ImportedDealDraftWithReview, SourceTravelClass } from "@/lib/sources/types";
 
 type DealDraft = {
   type: "flight" | "hotel";
@@ -148,7 +148,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [amadeusPreview, setAmadeusPreview] = useState<DealImportPreviewResult | null>(null);
   const [amadeusLoading, setAmadeusLoading] = useState(false);
   const [amadeusStatus, setAmadeusStatus] = useState<string>("Preview live-source fares, then load one into the publish form for review.");
-  const [savedImports, setSavedImports] = useState<ImportedDealDraft[]>([]);
+  const [savedImports, setSavedImports] = useState<ImportedDealDraftWithReview[]>([]);
   const [importsLoading, setImportsLoading] = useState(true);
   const [importsStatus, setImportsStatus] = useState<string>("Save strong live-source candidates here while you review copy and booking links.");
   const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
@@ -166,7 +166,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
 
     try {
       const response = await fetch("/api/admin/sources/imports", { cache: "no-store" });
-      const payload = (await response.json()) as { drafts?: ImportedDealDraft[]; error?: string };
+      const payload = (await response.json()) as { drafts?: ImportedDealDraftWithReview[]; error?: string };
 
       if (!response.ok) {
         setSavedImports([]);
@@ -744,16 +744,47 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                       <span>Saved {formatImportTimestamp(savedImport.createdAt)}</span>
                       <span>{savedImport.payload.currency} {savedImport.payload.currentPrice} vs {savedImport.payload.referencePrice}</span>
                     </div>
+                    <div className="admin-import-review-band">
+                      <div className="score-badge alt">
+                        <span>{savedImport.review.worthItScore}</span>
+                      </div>
+                      <div className="admin-import-review-copy">
+                        <p className="mini-label">{savedImport.review.matchLabel} · {savedImport.review.savingsPercent}% below benchmark</p>
+                        <p>{savedImport.payload.whyWorthIt}</p>
+                      </div>
+                    </div>
                     <div className="reason-stack account-tag-row">
                       {savedImport.payload.tags.map((tag) => (
                         <span className="insight-pill" key={`${savedImport.id}-${tag}`}>{tag}</span>
                       ))}
                     </div>
                     <div className="admin-import-notes">
+                      {savedImport.review.reasons.slice(0, 2).map((reason) => (
+                        <p key={`${savedImport.id}-reason-${reason}`}>{reason}</p>
+                      ))}
+                      {savedImport.review.warnings.map((warning) => (
+                        <p key={`${savedImport.id}-warning-${warning}`}>{warning}</p>
+                      ))}
                       {savedImport.reviewNotes.map((note) => (
-                        <p key={`${savedImport.id}-${note}`}>{note}</p>
+                        <p key={`${savedImport.id}-note-${note}`}>{note}</p>
                       ))}
                     </div>
+                    {savedImport.review.duplicateMatches.length ? (
+                      <div className="admin-import-duplicates">
+                        <p className="mini-label">Similar live deals already in the feed</p>
+                        <div className="mini-stat-list">
+                          {savedImport.review.duplicateMatches.map((match) => (
+                            <div className="mini-stat-row" key={`${savedImport.id}-${match.dealId}`}>
+                              <span>
+                                <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
+                                {` · ${match.similarityLabel}`}
+                              </span>
+                              <strong>{match.currency} {match.currentPrice}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </article>
                 ))}
               </div>
@@ -788,6 +819,8 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     </div>
   );
 }
+
+
 
 
 

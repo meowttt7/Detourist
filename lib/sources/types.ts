@@ -37,3 +37,27 @@ export type ImportedDealDraft = ImportedDealCandidate & {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ImportedDealDuplicateMatch = {
+  dealId: string;
+  dealSlug: string;
+  title: string;
+  publishedAt: string;
+  currentPrice: number;
+  currency: string;
+  similarityLabel: string;
+};
+
+export type ImportedDealDraftReview = {
+  worthItScore: number;
+  matchLabel: string;
+  savingsPercent: number;
+  reasons: string[];
+  warnings: string[];
+  duplicateMatches: ImportedDealDuplicateMatch[];
+};
+
+export type ImportedDealDraftWithReview = ImportedDealDraft & {
+  review: ImportedDealDraftReview;
+};
+

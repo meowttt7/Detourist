@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { isAdminAuthenticated } from "@/lib/auth";
-import { deleteImportedDealDraft, getImportedDealDrafts, saveImportedDealDraft } from "@/lib/import-draft-store";
+import { getImportedDealDraftsWithReview } from "@/lib/import-draft-review";
+import { deleteImportedDealDraft, saveImportedDealDraft } from "@/lib/import-draft-store";
 import type { ImportedDealCandidate } from "@/lib/sources/types";
 
 function normalizeCandidate(body: Record<string, unknown>): ImportedDealCandidate | null {
@@ -34,7 +35,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const drafts = await getImportedDealDrafts();
+  const drafts = await getImportedDealDraftsWithReview();
   return NextResponse.json({ drafts }, { status: 200 });
 }
 
