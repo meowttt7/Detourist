@@ -3,33 +3,37 @@ import { WaitlistForm } from "@/components/waitlist-form";
 const navItems = [
   { label: "How It Works", href: "#how-it-works" },
   { label: "Sample Deals", href: "#sample-deals" },
-  { label: "Worth-It Score", href: "#worth-it-score" },
   { label: "Pricing", href: "#pricing" },
+];
+
+const heroHighlights = [
+  "Premium cabins and luxury stays",
+  "Built for alternate airports and smart detours",
+  "Worth-It Score explains the tradeoff fast",
 ];
 
 const steps = [
   {
     title: "Set your detour tolerance",
-    body: "Choose your airports, cabin, budget, and how much friction you will tolerate.",
+    body: "Choose airports, cabin, budget, and how much friction you will tolerate.",
     badge: "01",
   },
   {
-    title: "We hunt the irrational deals",
-    body: "Detourist surfaces premium fares and luxury stays where the savings meaningfully outweigh the inconvenience.",
+    title: "Detourist filters the weird value",
+    body: "We look for premium routes and stays where the savings meaningfully outweigh the inconvenience.",
     badge: "02",
   },
   {
-    title: "Book only when it's worth it",
-    body: "Every deal shows the upside, the catch, and a Worth-It Score so you can decide fast.",
+    title: "You book the ones that clear the bar",
+    body: "Each alert shows the upside, the catch, and a Worth-It Score so you can decide quickly.",
     badge: "03",
   },
 ];
 
 const differentiators = [
-  "Premium cabins and luxury stays, not generic bargain hunting",
-  "Built for repositioning, layovers, and odd routings",
-  "Explains why a deal matters, not just the price",
-  "Personalized to your actual tolerance for pain",
+  "Not cheapest-for-the-sake-of-cheapest",
+  "Personalized to your real tolerance for pain",
+  "Made for travelers who already compare nearby airports",
 ];
 
 const deals = [
@@ -40,16 +44,16 @@ const deals = [
     reference: "Usually around $4,200",
     score: 91,
     catchText: "One overnight layover in Doha",
-    valueText: "42% of the usual premium fare",
+    valueText: "A premium-cabin fare at roughly 42% of the usual price.",
   },
   {
     title: "Sydney to Tokyo",
     subtitle: "First Class",
-    price: "Near standard business-class pricing",
+    price: "Near standard business pricing",
     reference: "Rare for this cabin",
     score: 88,
     catchText: "Requires a reposition to Kuala Lumpur",
-    valueText: "A premium-cabin jump without the normal premium-cabin price",
+    valueText: "A true cabin upgrade without the normal first-class premium.",
   },
   {
     title: "Bangkok Riverside Stay",
@@ -58,60 +62,36 @@ const deals = [
     reference: "After promo stacking",
     score: 84,
     catchText: "Weekday-only availability",
-    valueText: "Luxury pricing that behaves like an off-market rate",
+    valueText: "Luxury pricing that behaves like an off-market rate.",
   },
 ];
 
 const scoreBreakdown = [
   { label: "Value", detail: "How unusual is the savings?", width: "92%" },
-  { label: "Comfort", detail: "What class of trip are you getting?", width: "86%" },
-  { label: "Friction", detail: "How annoying is the routing?", width: "58%" },
-  { label: "Fit", detail: "Does it match your tolerance and preferences?", width: "88%" },
+  { label: "Comfort", detail: "What level of trip are you getting?", width: "86%" },
+  { label: "Friction", detail: "How annoying is the detour?", width: "58%" },
+  { label: "Fit", detail: "Does it match your tolerance?", width: "88%" },
 ];
 
 const audience = [
-  "You check more than one airport before booking",
-  "You do not mind a layover if the value is real",
-  "You care about premium comfort, but not at any price",
-  "You enjoy finding the smarter route",
+  "You check more than one airport before booking.",
+  "You will take the extra stop if the value is obvious.",
+  "You care about premium comfort, just not at any price.",
+  "You like the smarter route more than the obvious one.",
 ];
 
 const pricing = [
   {
     name: "Free",
-    subtitle: "A low-friction way to feel out the deal quality.",
+    subtitle: "Feel the quality of the feed before you commit.",
     features: ["Daily digest", "Limited alerts", "One airport profile", "Basic filters"],
     featured: false,
   },
   {
     name: "Detourist Pro",
     subtitle: "For travelers who want the best alerts first.",
-    features: [
-      "Instant alerts",
-      "Multiple airports",
-      "Premium-only tracking",
-      "Advanced Worth-It personalization",
-      "Early access to weird-route finds",
-    ],
+    features: ["Instant alerts", "Multiple airports", "Premium-only tracking", "Deeper Worth-It personalization"],
     featured: true,
-  },
-];
-
-const faqs = [
-  {
-    question: "Do I need points to use Detourist?",
-    answer:
-      "No. Detourist starts with premium travel deals you can book with cash. Points and miles may come later, but the product does not depend on them.",
-  },
-  {
-    question: "Is this only for business and first class?",
-    answer:
-      "The core focus is premium comfort and luxury value. Most alerts will be business class, first class, or high-value luxury stays.",
-  },
-  {
-    question: "Do you book the trips for me?",
-    answer:
-      "Not in the first version. Detourist helps you discover and evaluate the right deals quickly, then sends you to book them.",
   },
 ];
 
@@ -141,15 +121,19 @@ export default function Home() {
       <section className="hero section" id="top">
         <div className="hero-copy">
           <p className="eyebrow">Premium deals for flexible travelers</p>
-          <h1>Luxury travel deals that reward flexibility.</h1>
+          <h1>Luxury travel deals that make the detour worth it.</h1>
           <p className="hero-text">
-            Detourist finds premium fares and luxury stays where a smarter route,
-            flexible timing, or alternate departure city unlocks outsized value.
+            Detourist finds premium fares and luxury stays where flexibility unlocks outsized value.
           </p>
           <div id="waitlist">
             <WaitlistForm source="hero" />
           </div>
           <p className="support-text">For travelers who care more about value than convenience.</p>
+          <div className="pill-row" aria-label="Detourist highlights">
+            {heroHighlights.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+          </div>
         </div>
 
         <div className="hero-panel">
@@ -184,16 +168,17 @@ export default function Home() {
       </section>
 
       <section className="section social-proof">
-        <p className="section-kicker">Global by design</p>
+        <p className="section-kicker">Built for Detourists</p>
         <div className="split-section">
-          <h2>Built for travelers who already check nearby airports</h2>
-          <p>A better route can save thousands.</p>
+          <h2>Made for travelers who already know the obvious route is not always the smart one.</h2>
+          <p>Better comfort, stronger value, clearer tradeoffs.</p>
         </div>
-        <div className="pill-row" aria-label="Product coverage highlights">
-          <span>Global airports</span>
-          <span>Premium cabins</span>
-          <span>Luxury stays</span>
-          <span>Smart detours</span>
+        <div className="pill-grid">
+          {audience.map((item) => (
+            <div className="audience-pill" key={item}>
+              {item}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -201,8 +186,8 @@ export default function Home() {
         <p className="section-kicker">How It Works</p>
         <div className="split-section">
           <div>
-            <h2>Tell us your tolerance. We find the upside.</h2>
-            <p>Detourist filters for premium deals where the savings justify the friction.</p>
+            <h2>Tell us your tolerance. We filter for the upside.</h2>
+            <p>Detourist is not hunting for the cheapest option. It is hunting for premium value that clears your bar.</p>
           </div>
         </div>
         <div className="steps-grid">
@@ -216,26 +201,50 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section accent-panel">
+      <section className="section accent-panel" id="worth-it-score">
         <p className="section-kicker">Why Detourist</p>
         <div className="comparison-layout">
           <div>
-            <h2>Most travel sites optimize for easy. We optimize for worth it.</h2>
-            <p>Value first. Convenience second.</p>
+            <h2>Cheap is easy to find. Worth it is harder.</h2>
+            <p>Detourist helps flexible travelers evaluate premium deals in seconds, not tabs.</p>
             <ul className="check-list">
               {differentiators.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
-          </div>
-          <div className="comparison-card">
-            <div>
-              <p className="mini-label">Typical travel site</p>
-              <p className="comparison-copy">Cheapest route or easiest route</p>
+            <div className="score-example-card">
+              <div className="score-badge large alt">
+                <span>89</span>
+                <small>/100</small>
+              </div>
+              <div>
+                <p className="deal-label">Worth-It Score</p>
+                <p className="deal-copy">Balances savings, comfort, friction, and fit.</p>
+              </div>
             </div>
-            <div>
-              <p className="mini-label">Detourist</p>
-              <p className="comparison-copy">Premium routes where the savings justify the extra hoop</p>
+          </div>
+          <div className="score-panel">
+            <p className="mini-label">Example score breakdown</p>
+            {scoreBreakdown.map((item) => (
+              <div className="score-row" key={item.label}>
+                <div className="score-row-label">
+                  <strong>{item.label}</strong>
+                  <span>{item.detail}</span>
+                </div>
+                <div className="score-track">
+                  <div className="score-fill" style={{ width: item.width }} />
+                </div>
+              </div>
+            ))}
+            <div className="comparison-card">
+              <div>
+                <p className="mini-label">Typical travel site</p>
+                <p className="comparison-copy">Cheapest route or easiest route</p>
+              </div>
+              <div>
+                <p className="mini-label">Detourist</p>
+                <p className="comparison-copy">Premium trips where the savings justify the extra hoop</p>
+              </div>
             </div>
           </div>
         </div>
@@ -245,11 +254,11 @@ export default function Home() {
         <div className="section-heading-row">
           <div>
             <p className="section-kicker">Sample Deals</p>
-            <h2>A few examples of worth it</h2>
+            <h2>Three examples of the kind of value we mean</h2>
             <p>Deals change fast. The logic does not.</p>
           </div>
           <a className="text-link" href="#waitlist">
-            See More Sample Deals
+            Join for Early Access
           </a>
         </div>
         <div className="deal-grid">
@@ -269,66 +278,9 @@ export default function Home() {
               <div className="deal-divider" />
               <p className="deal-label">The catch</p>
               <p className="deal-copy">{deal.catchText}</p>
-              <p className="deal-label">Why it's worth it</p>
+              <p className="deal-label">Why it clears the bar</p>
               <p className="deal-value">{deal.valueText}</p>
             </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="section score-section" id="worth-it-score">
-        <div>
-          <p className="section-kicker">Worth-It Score</p>
-          <h2>Cheap is not enough. It still has to be worth it.</h2>
-          <p>The Worth-It Score balances savings, comfort, friction, and your personal tolerance for pain.</p>
-          <div className="score-example-card">
-            <div className="score-badge large alt">
-              <span>89</span>
-              <small>/100</small>
-            </div>
-            <div>
-              <p className="deal-label">Why it's worth it</p>
-              <p className="deal-copy">Deep premium-cabin discount</p>
-              <p className="deal-label">The catch</p>
-              <p className="deal-copy">Long layover and separate positioning leg</p>
-            </div>
-          </div>
-        </div>
-        <div className="score-panel">
-          <p className="mini-label">Example score breakdown</p>
-          {scoreBreakdown.map((item) => (
-            <div className="score-row" key={item.label}>
-              <div className="score-row-label">
-                <strong>{item.label}</strong>
-                <span>{item.detail}</span>
-              </div>
-              <div className="score-track">
-                <div className="score-fill" style={{ width: item.width }} />
-              </div>
-            </div>
-          ))}
-          <ul className="score-notes">
-            <li>Business-class fare at 42% below typical price</li>
-            <li>One extra stop</li>
-            <li>Five-hour longer journey</li>
-            <li>Still a strong match for flexible travelers</li>
-          </ul>
-        </div>
-      </section>
-
-      <section className="section audience-section">
-        <p className="section-kicker">Built for Detourists</p>
-        <div className="split-section">
-          <div>
-            <h2>For travelers who enjoy the smarter route</h2>
-            <p>You will take the extra stop when the math is clearly in your favor.</p>
-          </div>
-        </div>
-        <div className="pill-grid">
-          {audience.map((item) => (
-            <div className="audience-pill" key={item}>
-              {item}
-            </div>
           ))}
         </div>
       </section>
@@ -337,8 +289,8 @@ export default function Home() {
         <div className="section-heading-row">
           <div>
             <p className="section-kicker">Pricing</p>
-            <h2>Start free. Upgrade for the best alerts.</h2>
-            <p>Founding-member pricing opens to early users first.</p>
+            <h2>Start free. Upgrade if you want the best alerts first.</h2>
+            <p>Founding-member access opens to early users first.</p>
           </div>
         </div>
         <div className="pricing-grid">
@@ -363,23 +315,10 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="section faq-section">
-        <p className="section-kicker">FAQ</p>
-        <h2>A few quick answers</h2>
-        <div className="faq-list">
-          {faqs.map((faq) => (
-            <details key={faq.question}>
-              <summary>{faq.question}</summary>
-              <p>{faq.answer}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
       <section className="section final-cta">
         <div>
           <p className="section-kicker">Join Early</p>
-          <h2>If you'd fly better for less, you're one of us.</h2>
+          <h2>If you would travel better for less, you are probably one of us.</h2>
           <p>Join the waitlist and get early access when Detourist opens up.</p>
         </div>
         <WaitlistForm buttonLabel="Get Early Access" compact source="final-cta" />
