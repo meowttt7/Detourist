@@ -85,6 +85,10 @@ The endpoint is safe to trigger hourly because it:
 
 Full setup steps live in [docs-digest-scheduler.md](C:\Users\Meow\Documents\Detourist\docs-digest-scheduler.md).
 
+## Operator guide
+
+Day-two production checks, incident playbooks, and canonical environment ownership live in [docs-operator-runbook.md](C:\Users\Meow\Documents\Detourist\docs-operator-runbook.md).
+
 ## GitHub repo setup
 
 Typical next commands:
@@ -112,3 +116,4 @@ After the first push:
 - [lib/db.ts](C:\Users\Meow\Documents\Detourist\lib\db.ts)
 - [lib/digests.ts](C:\Users\Meow\Documents\Detourist\lib\digests.ts)
 - [lib/scheduled-jobs.ts](C:\Users\Meow\Documents\Detourist\lib\scheduled-jobs.ts)
+
