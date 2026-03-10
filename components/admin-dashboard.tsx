@@ -79,6 +79,10 @@ export async function AdminDashboard() {
               <strong>{operations.smtpHost ? `${operations.smtpHost}:${operations.smtpPort ?? "?"}${operations.smtpSecure ? " (TLS)" : ""}` : "not configured"}</strong>
             </div>
             <div className="mini-stat-row">
+              <span>SMTP auth</span>
+              <strong>{operations.smtpAuthState}</strong>
+            </div>
+            <div className="mini-stat-row">
               <span>Digest schedule</span>
               <strong>{operations.digestScheduleLabel}</strong>
             </div>
@@ -385,3 +389,4 @@ export async function AdminDashboard() {
     </section>
   );
 }
+

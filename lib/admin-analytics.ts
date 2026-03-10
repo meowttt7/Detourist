@@ -208,6 +208,7 @@ export async function getAdminAnalytics() {
       smtpHost: mailer.smtpHost,
       smtpPort: mailer.smtpPort,
       smtpSecure: mailer.smtpSecure,
+      smtpAuthState: mailer.smtpAuthState,
       digestScheduleLabel: formatDigestScheduleLabel(),
       digestHour: digestConfig.hour,
       digestTimeZone: digestConfig.timeZone,
@@ -233,4 +234,6 @@ export async function getAdminAnalytics() {
     },
   };
 }
+
+
 

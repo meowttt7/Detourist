@@ -98,6 +98,8 @@ function buildMailerCheck(): HealthCheck {
     `mode=${config.mode}`,
     `from=${config.fromAddress}`,
     config.smtpHost ? `smtp=${config.smtpHost}:${config.smtpPort ?? "?"}` : "smtp=not-configured",
+    `secure=${config.smtpSecure ? "true" : "false"}`,
+    `auth=${config.smtpAuthState}`,
   ];
 
   if (config.mode === "outbox") {
@@ -106,6 +108,26 @@ function buildMailerCheck(): HealthCheck {
       label: "Mailer",
       status: isProductionRuntime() ? "warn" : "ok",
       summary: isProductionRuntime() ? "SMTP is not configured; email is only queued locally." : "SMTP is not configured; local outbox mode is active.",
+      details,
+    };
+  }
+
+  if (config.smtpAuthState === "partial") {
+    return {
+      key: "mailer",
+      label: "Mailer",
+      status: "warn",
+      summary: "SMTP transport is configured, but auth credentials are incomplete.",
+      details,
+    };
+  }
+
+  if (config.smtpProviderHint === "resend" && config.smtpAuthState !== "configured") {
+    return {
+      key: "mailer",
+      label: "Mailer",
+      status: "warn",
+      summary: "Resend SMTP requires auth credentials, but they are missing.",
       details,
     };
   }

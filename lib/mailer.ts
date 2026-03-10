@@ -44,8 +44,26 @@ type OutboxEmail = {
   createdAt: string;
 };
 
+type SmtpAuthState = "configured" | "partial" | "missing";
+
+type MailerConfigSummary = {
+  mode: EmailDeliveryMode;
+  fromAddress: string;
+  smtpHost: string | null;
+  smtpPort: string | null;
+  smtpSecure: boolean;
+  smtpUserConfigured: boolean;
+  smtpPasswordConfigured: boolean;
+  smtpAuthState: SmtpAuthState;
+  smtpProviderHint: "resend" | null;
+};
+
+function getTrimmedEnv(name: string) {
+  return process.env[name]?.trim() || null;
+}
+
 function usingSmtp() {
-  return Boolean(process.env.DETOURIST_SMTP_HOST && process.env.DETOURIST_SMTP_PORT && process.env.DETOURIST_EMAIL_FROM);
+  return Boolean(getTrimmedEnv("DETOURIST_SMTP_HOST") && getTrimmedEnv("DETOURIST_SMTP_PORT") && getTrimmedEnv("DETOURIST_EMAIL_FROM"));
 }
 
 function getBaseUrl() {
@@ -56,13 +74,45 @@ function getFromAddress() {
   return process.env.DETOURIST_EMAIL_FROM ?? "Detourist <alerts@detourist.local>";
 }
 
-export function getMailerConfigSummary() {
+function getSmtpAuthState() {
+  const smtpUserConfigured = Boolean(getTrimmedEnv("DETOURIST_SMTP_USER"));
+  const smtpPasswordConfigured = Boolean(getTrimmedEnv("DETOURIST_SMTP_PASSWORD"));
+
+  if (smtpUserConfigured && smtpPasswordConfigured) {
+    return "configured" satisfies SmtpAuthState;
+  }
+
+  if (smtpUserConfigured || smtpPasswordConfigured) {
+    return "partial" satisfies SmtpAuthState;
+  }
+
+  return "missing" satisfies SmtpAuthState;
+}
+
+function getSmtpProviderHint(smtpHost: string | null) {
+  if (!smtpHost) {
+    return null;
+  }
+
+  return smtpHost.includes("resend") ? "resend" : null;
+}
+
+export function getMailerConfigSummary(): MailerConfigSummary {
+  const smtpHost = getTrimmedEnv("DETOURIST_SMTP_HOST");
+  const smtpPort = getTrimmedEnv("DETOURIST_SMTP_PORT");
+  const smtpUserConfigured = Boolean(getTrimmedEnv("DETOURIST_SMTP_USER"));
+  const smtpPasswordConfigured = Boolean(getTrimmedEnv("DETOURIST_SMTP_PASSWORD"));
+
   return {
     mode: usingSmtp() ? "smtp" : "outbox",
     fromAddress: getFromAddress(),
-    smtpHost: process.env.DETOURIST_SMTP_HOST ?? null,
-    smtpPort: process.env.DETOURIST_SMTP_PORT ?? null,
+    smtpHost,
+    smtpPort,
     smtpSecure: String(process.env.DETOURIST_SMTP_SECURE ?? "false") === "true",
+    smtpUserConfigured,
+    smtpPasswordConfigured,
+    smtpAuthState: getSmtpAuthState(),
+    smtpProviderHint: getSmtpProviderHint(smtpHost),
   };
 }
 
@@ -237,4 +287,3 @@ export async function sendSigninEmail(input: SigninEmailInput): Promise<EmailSen
   const { subject, html } = renderSigninEmail(input);
   return deliverEmail(input.recipientEmail, subject, html, `signin:${input.recipientEmail}:${Date.now()}`);
 }
-
