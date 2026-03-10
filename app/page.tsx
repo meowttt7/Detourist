@@ -10,7 +10,7 @@ const navItems = [
 const steps = [
   {
     title: "Set your detour tolerance",
-    body: "Choose your home airports, preferred cabin, budget, and how many hoops you're willing to jump through.",
+    body: "Choose your airports, cabin, budget, and how much friction you will tolerate.",
     badge: "01",
   },
   {
@@ -20,7 +20,7 @@ const steps = [
   },
   {
     title: "Book only when it's worth it",
-    body: "Every deal shows the upside, the catch, and a Worth-It Score so you can decide in minutes.",
+    body: "Every deal shows the upside, the catch, and a Worth-It Score so you can decide fast.",
     badge: "03",
   },
 ];
@@ -71,9 +71,9 @@ const scoreBreakdown = [
 
 const audience = [
   "You check more than one airport before booking",
-  "You don't mind a layover if the value is real",
+  "You do not mind a layover if the value is real",
   "You care about premium comfort, but not at any price",
-  "You get a thrill from finding the smarter route",
+  "You enjoy finding the smarter route",
 ];
 
 const pricing = [
@@ -85,7 +85,7 @@ const pricing = [
   },
   {
     name: "Detourist Pro",
-    subtitle: "For the travelers who want the best alerts first.",
+    subtitle: "For travelers who want the best alerts first.",
     features: [
       "Instant alerts",
       "Multiple airports",
@@ -101,7 +101,7 @@ const faqs = [
   {
     question: "Do I need points to use Detourist?",
     answer:
-      "No. Detourist starts with premium travel deals you can act on with cash. Over time, we may add more ways to evaluate value, but the product does not depend on you being deep into points or miles.",
+      "No. Detourist starts with premium travel deals you can book with cash. Points and miles may come later, but the product does not depend on them.",
   },
   {
     question: "Is this only for business and first class?",
@@ -112,16 +112,6 @@ const faqs = [
     question: "Do you book the trips for me?",
     answer:
       "Not in the first version. Detourist helps you discover and evaluate the right deals quickly, then sends you to book them.",
-  },
-  {
-    question: "Which regions do you support?",
-    answer:
-      "Detourist is designed for a global audience. Early coverage will be strongest around major international hubs and flexible departure regions.",
-  },
-  {
-    question: "What if I hate long layovers?",
-    answer:
-      "That's exactly why Detourist asks for your detour tolerance. The product is built to personalize the tradeoff instead of assuming every traveler values convenience the same way.",
   },
 ];
 
@@ -150,19 +140,16 @@ export default function Home() {
 
       <section className="hero section" id="top">
         <div className="hero-copy">
-          <p className="eyebrow">Premium travel deals for flexible people</p>
-          <h1>Premium travel deals for people who don't mind the long way around.</h1>
+          <p className="eyebrow">Premium deals for flexible travelers</p>
+          <h1>Luxury travel deals that reward flexibility.</h1>
           <p className="hero-text">
-            Detourist finds business-class, first-class, and luxury stay deals that
-            become ridiculously good value if you're flexible on routing, timing, or
-            departure city.
+            Detourist finds premium fares and luxury stays where a smarter route,
+            flexible timing, or alternate departure city unlocks outsized value.
           </p>
           <div id="waitlist">
             <WaitlistForm source="hero" />
           </div>
-          <p className="support-text">
-            Built for travelers who care more about value than convenience.
-          </p>
+          <p className="support-text">For travelers who care more about value than convenience.</p>
         </div>
 
         <div className="hero-panel">
@@ -173,16 +160,14 @@ export default function Home() {
               <small>/100</small>
             </div>
             <p className="hero-card-title">Singapore to Paris in business class</p>
-            <p className="hero-card-copy">
-              Massive discount, mild pain, strong match for a flexible traveler.
-            </p>
+            <p className="hero-card-copy">Huge savings. Mild pain. Strong fit.</p>
           </div>
           <div className="hero-card hero-stat-card">
             <div>
               <p className="mini-label">What Detourist catches</p>
               <ul className="stat-list">
-                <li>Business class for 42% below typical fare</li>
-                <li>First class near business-class pricing</li>
+                <li>Business class 42% below typical fare</li>
+                <li>First class near business pricing</li>
                 <li>Luxury stays with stackable savings</li>
               </ul>
             </div>
@@ -201,11 +186,8 @@ export default function Home() {
       <section className="section social-proof">
         <p className="section-kicker">Global by design</p>
         <div className="split-section">
-          <h2>Designed for value-obsessed travelers across major global hubs</h2>
-          <p>
-            From Singapore to Sydney, London to Dubai, Detourist is built for travelers
-            who know a clever routing can save thousands.
-          </p>
+          <h2>Built for travelers who already check nearby airports</h2>
+          <p>A better route can save thousands.</p>
         </div>
         <div className="pill-row" aria-label="Product coverage highlights">
           <span>Global airports</span>
@@ -219,11 +201,8 @@ export default function Home() {
         <p className="section-kicker">How It Works</p>
         <div className="split-section">
           <div>
-            <h2>Luxury travel, priced like a loophole</h2>
-            <p>
-              Tell us what kind of inconvenience you're willing to tolerate, and we'll
-              surface the premium deals where the payoff actually justifies it.
-            </p>
+            <h2>Tell us your tolerance. We find the upside.</h2>
+            <p>Detourist filters for premium deals where the savings justify the friction.</p>
           </div>
         </div>
         <div className="steps-grid">
@@ -242,9 +221,7 @@ export default function Home() {
         <div className="comparison-layout">
           <div>
             <h2>Most travel sites optimize for easy. We optimize for worth it.</h2>
-            <p>
-              Detourist is for travelers who care about the math, not just the map.
-            </p>
+            <p>Value first. Convenience second.</p>
             <ul className="check-list">
               {differentiators.map((item) => (
                 <li key={item}>{item}</li>
@@ -258,9 +235,7 @@ export default function Home() {
             </div>
             <div>
               <p className="mini-label">Detourist</p>
-              <p className="comparison-copy">
-                Premium routes where the savings justify every extra hoop
-              </p>
+              <p className="comparison-copy">Premium routes where the savings justify the extra hoop</p>
             </div>
           </div>
         </div>
@@ -270,8 +245,8 @@ export default function Home() {
         <div className="section-heading-row">
           <div>
             <p className="section-kicker">Sample Deals</p>
-            <h2>A few examples of what worth it looks like</h2>
-            <p>The exact deals change fast. The pattern doesn't.</p>
+            <h2>A few examples of worth it</h2>
+            <p>Deals change fast. The logic does not.</p>
           </div>
           <a className="text-link" href="#waitlist">
             See More Sample Deals
@@ -304,12 +279,8 @@ export default function Home() {
       <section className="section score-section" id="worth-it-score">
         <div>
           <p className="section-kicker">Worth-It Score</p>
-          <h2>Not every cheap premium trip is actually worth taking</h2>
-          <p>
-            Detourist scores deals based on the upside and the pain. A massive discount
-            gets credit. Extra stops, long layovers, overnight transits, or repositioning
-            reduce the score. Your personal detour tolerance adjusts the final result.
-          </p>
+          <h2>Cheap is not enough. It still has to be worth it.</h2>
+          <p>The Worth-It Score balances savings, comfort, friction, and your personal tolerance for pain.</p>
           <div className="score-example-card">
             <div className="score-badge large alt">
               <span>89</span>
@@ -349,12 +320,8 @@ export default function Home() {
         <p className="section-kicker">Built for Detourists</p>
         <div className="split-section">
           <div>
-            <h2>Built for the travelers who enjoy the smarter route</h2>
-            <p>
-              You know nearby airports can change everything. You'd rather take an extra
-              stop than overpay thousands. You want lie-flat comfort, but only when the
-              math makes sense.
-            </p>
+            <h2>For travelers who enjoy the smarter route</h2>
+            <p>You will take the extra stop when the math is clearly in your favor.</p>
           </div>
         </div>
         <div className="pill-grid">
@@ -370,8 +337,8 @@ export default function Home() {
         <div className="section-heading-row">
           <div>
             <p className="section-kicker">Pricing</p>
-            <h2>Start free. Upgrade when you want the best alerts first.</h2>
-            <p>Founding-member pricing will open to early users first.</p>
+            <h2>Start free. Upgrade for the best alerts.</h2>
+            <p>Founding-member pricing opens to early users first.</p>
           </div>
         </div>
         <div className="pricing-grid">
@@ -398,7 +365,7 @@ export default function Home() {
 
       <section className="section faq-section">
         <p className="section-kicker">FAQ</p>
-        <h2>Questions travelers will ask</h2>
+        <h2>A few quick answers</h2>
         <div className="faq-list">
           {faqs.map((faq) => (
             <details key={faq.question}>
@@ -412,11 +379,8 @@ export default function Home() {
       <section className="section final-cta">
         <div>
           <p className="section-kicker">Join Early</p>
-          <h2>If you'd take the smarter route to fly better for less, you're one of us.</h2>
-          <p>
-            Join the Detourist waitlist and get early access when premium deals start
-            landing.
-          </p>
+          <h2>If you'd fly better for less, you're one of us.</h2>
+          <p>Join the waitlist and get early access when Detourist opens up.</p>
         </div>
         <WaitlistForm buttonLabel="Get Early Access" compact source="final-cta" />
       </section>
@@ -433,4 +397,3 @@ export default function Home() {
     </main>
   );
 }
-
