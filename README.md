@@ -73,6 +73,7 @@ Notes:
 - `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are required in Vercel for production writes.
 - Local development falls back to a file-backed database in `data/detourist.sqlite` when Turso env vars are absent.
 - JSON bootstrap seeding is on by default only for the local file-backed database. Remote databases stay unseeded unless `DETOURIST_ENABLE_BOOTSTRAP_SEED=true` is set explicitly.
+- Amadeus live-source previews require `DETOURIST_AMADEUS_CLIENT_ID`, `DETOURIST_AMADEUS_CLIENT_SECRET`, and optional `DETOURIST_AMADEUS_ENV` (`test` by default).
 
 ## Daily digest scheduling
 

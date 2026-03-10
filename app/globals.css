@@ -2188,4 +2188,56 @@ input:disabled {
   margin-top: 12px;
 }
 
+.admin-import-grid {
+  margin-top: 12px;
+}
+
+.admin-import-preview-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.admin-import-preview-card {
+  display: grid;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid rgba(29, 42, 42, 0.08);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.admin-import-preview-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-import-preview-head h4 {
+  margin: 6px 0 8px;
+  font-family: var(--serif);
+  font-size: 1.35rem;
+}
+
+.admin-import-preview-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-import-notes {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-import-notes p {
+  margin: 0;
+  color: var(--muted-strong);
+}
+
+@media (max-width: 900px) {
+  .admin-import-preview-head {
+    flex-direction: column;
+  }
+}
 

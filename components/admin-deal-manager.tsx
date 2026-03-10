@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import type { Deal } from "@/lib/types";
+import type { DealImportPreviewResult, ImportedDealCandidate, SourceTravelClass } from "@/lib/sources/types";
 
 type DealDraft = {
   type: "flight" | "hotel";
@@ -27,6 +28,18 @@ type DealDraft = {
   bookingUrl: string;
   expiresAt: string;
   tags: string;
+};
+
+type AmadeusSearchDraft = {
+  originLocationCode: string;
+  destinationLocationCode: string;
+  departureDate: string;
+  returnDate: string;
+  adults: number;
+  travelClass: SourceTravelClass;
+  nonStop: boolean;
+  maxPrice: number;
+  currencyCode: string;
 };
 
 type DeliveryBreakdown = {
@@ -95,6 +108,18 @@ const defaultDraft: DealDraft = {
   tags: "business-class, flexible",
 };
 
+const defaultAmadeusSearch: AmadeusSearchDraft = {
+  originLocationCode: "SIN",
+  destinationLocationCode: "CDG",
+  departureDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  returnDate: new Date(Date.now() + 52 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+  adults: 1,
+  travelClass: "BUSINESS",
+  nonStop: false,
+  maxPrice: 2500,
+  currencyCode: "USD",
+};
+
 function summarizeDelivery(delivery: DeliveryBreakdown | undefined) {
   if (!delivery) {
     return "0 sent, 0 queued, 0 failed";
@@ -115,6 +140,10 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [backfillStatus, setBackfillStatus] = useState<string>("Alert matching runs automatically on publish.");
   const [demoStatus, setDemoStatus] = useState<string>("Seed demo mode to light up the dashboard with believable product activity.");
   const [digestStatus, setDigestStatus] = useState<string>("Daily digest waits for users on batch mode and can be triggered manually for now.");
+  const [amadeusSearch, setAmadeusSearch] = useState<AmadeusSearchDraft>(defaultAmadeusSearch);
+  const [amadeusPreview, setAmadeusPreview] = useState<DealImportPreviewResult | null>(null);
+  const [amadeusLoading, setAmadeusLoading] = useState(false);
+  const [amadeusStatus, setAmadeusStatus] = useState<string>("Preview live-source fares, then load one into the publish form for review.");
 
   async function loadDeals() {
     setLoading(true);
@@ -268,6 +297,62 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     router.refresh();
   };
 
+  const handleAmadeusPreview = async () => {
+    setAmadeusLoading(true);
+    setAmadeusStatus("Searching live fares from Amadeus...");
+
+    const response = await fetch("/api/admin/sources/amadeus/preview", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(amadeusSearch),
+    });
+
+    const payload = (await response.json()) as DealImportPreviewResult & { error?: string };
+    setAmadeusLoading(false);
+
+    if (!response.ok) {
+      setAmadeusPreview(null);
+      setAmadeusStatus(payload.error ?? "Could not load live-source preview.");
+      if (response.status === 401) {
+        router.push("/login?redirect=/admin");
+      }
+      return;
+    }
+
+    setAmadeusPreview(payload);
+    setAmadeusStatus(`Loaded ${payload.candidates.length} live-source candidates from Amadeus.`);
+  };
+
+  const applyImportCandidate = (candidate: ImportedDealCandidate) => {
+    setDraft({
+      type: candidate.payload.type,
+      title: candidate.payload.title,
+      summary: candidate.payload.summary,
+      origin: candidate.payload.origin,
+      destination: candidate.payload.destination,
+      destinationRegion: candidate.payload.destinationRegion,
+      cabin: candidate.payload.cabin,
+      airlineOrBrand: candidate.payload.airlineOrBrand,
+      currentPrice: candidate.payload.currentPrice,
+      referencePrice: candidate.payload.referencePrice,
+      currency: candidate.payload.currency,
+      stops: candidate.payload.stops,
+      totalDurationHours: candidate.payload.totalDurationHours,
+      overnight: candidate.payload.overnight,
+      repositionRequired: candidate.payload.repositionRequired,
+      repositionFrom: candidate.payload.repositionFrom ?? "",
+      catchSummary: candidate.payload.catchSummary,
+      whyWorthIt: candidate.payload.whyWorthIt,
+      bookingUrl: candidate.payload.bookingUrl,
+      expiresAt: candidate.payload.expiresAt.slice(0, 16),
+      tags: candidate.payload.tags.join(", "),
+    });
+    setStatus("Live-source candidate loaded into the publish form. Add a public booking URL before publishing.");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <div className="admin-layout">
       <form className="product-form" onSubmit={handleSubmit}>
@@ -414,6 +499,106 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
             <button className="button button-secondary" type="button" onClick={handleDigestRun}>Run daily digests</button>
             <p className="status-copy">{digestStatus}</p>
           </div>
+        </div>
+
+        <div className="detail-card admin-ops-card">
+          <p className="section-kicker">Live source preview</p>
+          <h3>Search Amadeus and load a candidate into the publish form</h3>
+          <p className="support-text">This is a review-first workflow. Live-source candidates do not publish automatically, and each one still needs a public booking URL before it goes live.</p>
+          <div className="form-grid-two admin-import-grid">
+            <label className="field-label">
+              Origin
+              <input value={amadeusSearch.originLocationCode} onChange={(event) => setAmadeusSearch((current) => ({ ...current, originLocationCode: event.target.value.toUpperCase() }))} />
+            </label>
+            <label className="field-label">
+              Destination
+              <input value={amadeusSearch.destinationLocationCode} onChange={(event) => setAmadeusSearch((current) => ({ ...current, destinationLocationCode: event.target.value.toUpperCase() }))} />
+            </label>
+            <label className="field-label">
+              Departure date
+              <input type="date" value={amadeusSearch.departureDate} onChange={(event) => setAmadeusSearch((current) => ({ ...current, departureDate: event.target.value }))} />
+            </label>
+            <label className="field-label">
+              Return date
+              <input type="date" value={amadeusSearch.returnDate} onChange={(event) => setAmadeusSearch((current) => ({ ...current, returnDate: event.target.value }))} />
+            </label>
+            <label className="field-label">
+              Travel class
+              <select value={amadeusSearch.travelClass} onChange={(event) => setAmadeusSearch((current) => ({ ...current, travelClass: event.target.value as SourceTravelClass }))}>
+                <option value="ECONOMY">Economy</option>
+                <option value="PREMIUM_ECONOMY">Premium Economy</option>
+                <option value="BUSINESS">Business</option>
+                <option value="FIRST">First</option>
+              </select>
+            </label>
+            <label className="field-label">
+              Max price
+              <input type="number" value={amadeusSearch.maxPrice} onChange={(event) => setAmadeusSearch((current) => ({ ...current, maxPrice: Number(event.target.value) }))} />
+            </label>
+            <label className="field-label">
+              Adults
+              <input type="number" min={1} max={6} value={amadeusSearch.adults} onChange={(event) => setAmadeusSearch((current) => ({ ...current, adults: Number(event.target.value) }))} />
+            </label>
+            <label className="field-label">
+              Currency
+              <input value={amadeusSearch.currencyCode} onChange={(event) => setAmadeusSearch((current) => ({ ...current, currencyCode: event.target.value.toUpperCase() }))} />
+            </label>
+            <label className="toggle-row form-grid-span-two">
+              <input type="checkbox" checked={amadeusSearch.nonStop} onChange={(event) => setAmadeusSearch((current) => ({ ...current, nonStop: event.target.checked }))} />
+              <span>Only show nonstop options</span>
+            </label>
+          </div>
+          <div className="detail-actions-column admin-ops-actions">
+            <button className="button button-secondary" type="button" onClick={handleAmadeusPreview} disabled={amadeusLoading}>
+              {amadeusLoading ? "Searching..." : "Preview live fares"}
+            </button>
+            <p className="status-copy">{amadeusStatus}</p>
+          </div>
+          {amadeusPreview ? (
+            <div className="admin-import-preview-list">
+              {amadeusPreview.warnings.map((warning) => (
+                <p className="status-copy" key={warning}>{warning}</p>
+              ))}
+              {amadeusPreview.candidates.map((candidate) => (
+                <article className="admin-import-preview-card" key={candidate.id}>
+                  <div className="admin-import-preview-head">
+                    <div>
+                      <p className="mini-label">{candidate.sourceLabel}</p>
+                      <h4>{candidate.payload.title}</h4>
+                      <p>{candidate.sourceSummary}</p>
+                    </div>
+                    <button className="button button-small button-secondary" type="button" onClick={() => applyImportCandidate(candidate)}>
+                      Use in publish form
+                    </button>
+                  </div>
+                  <div className="mini-stat-list admin-inline-summary-list">
+                    <div className="mini-stat-row">
+                      <span>Current</span>
+                      <strong>{candidate.payload.currency} {candidate.payload.currentPrice}</strong>
+                    </div>
+                    <div className="mini-stat-row">
+                      <span>Reference</span>
+                      <strong>{candidate.payload.currency} {candidate.payload.referencePrice}</strong>
+                    </div>
+                    <div className="mini-stat-row">
+                      <span>Catch</span>
+                      <strong>{candidate.payload.catchSummary}</strong>
+                    </div>
+                  </div>
+                  <div className="reason-stack account-tag-row">
+                    {candidate.payload.tags.map((tag) => (
+                      <span className="insight-pill" key={`${candidate.id}-${tag}`}>{tag}</span>
+                    ))}
+                  </div>
+                  <div className="admin-import-notes">
+                    {candidate.reviewNotes.map((note) => (
+                      <p key={`${candidate.id}-${note}`}>{note}</p>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="section-heading-row product-heading-row">
