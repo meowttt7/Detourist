@@ -788,6 +788,251 @@ input:disabled {
   }
 }
 
+/* Landing page polish overrides */
+.site-header {
+  padding-bottom: 18px;
+}
+
+.site-nav {
+  font-size: 0.95rem;
+}
+
+.section {
+  padding: 46px 0;
+}
+
+.hero {
+  gap: 40px;
+  align-items: center;
+  padding-top: 24px;
+}
+
+.hero-copy {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  max-width: 38rem;
+}
+
+.hero-copy h1 {
+  max-width: 10ch;
+  margin: 0;
+  font-size: clamp(3rem, 6.4vw, 5.5rem);
+}
+
+.hero-text,
+.section p,
+.deal-copy,
+.deal-value,
+.faq-list p {
+  line-height: 1.62;
+}
+
+.support-text {
+  margin-top: -4px;
+  max-width: 40ch;
+}
+
+.hero-panel {
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.hero-card,
+.feature-card,
+.deal-card,
+.comparison-card,
+.score-panel,
+.pricing-card {
+  padding: 26px;
+}
+
+.hero-score-card {
+  min-height: 236px;
+}
+
+.hero-stat-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.hero-card-title {
+  margin-top: 14px;
+}
+
+.stat-list li,
+.check-list li,
+.score-notes li {
+  margin-bottom: 10px;
+}
+
+.split-section > div,
+.section-heading-row > div {
+  max-width: 44rem;
+}
+
+.pill-row,
+.pill-grid {
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pill-row span,
+.audience-pill {
+  padding: 10px 16px;
+}
+
+.pill-row span {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+
+.social-proof {
+  padding-top: 28px;
+}
+
+.social-proof .split-section {
+  align-items: end;
+}
+
+.steps-grid {
+  margin-top: 22px;
+  gap: 16px;
+}
+
+.feature-card {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.feature-card h3,
+.deal-card h3,
+.pricing-card h3 {
+  margin: 12px 0 6px;
+  font-size: 1.45rem;
+}
+
+.accent-panel {
+  padding-left: 30px;
+  padding-right: 30px;
+}
+
+.comparison-layout {
+  gap: 20px;
+}
+
+.comparison-card {
+  place-content: center;
+  min-height: 220px;
+}
+
+.comparison-copy {
+  font-size: 1.3rem;
+}
+
+.section-heading-row {
+  margin-bottom: 18px;
+  align-items: end;
+}
+
+.text-link {
+  white-space: nowrap;
+}
+
+.deal-grid,
+.pricing-grid {
+  gap: 16px;
+}
+
+.deal-price {
+  margin-top: 18px;
+}
+
+.score-section {
+  gap: 22px;
+}
+
+.score-example-card {
+  margin-top: 22px;
+}
+
+.score-row {
+  margin-top: 16px;
+}
+
+.audience-pill {
+  min-height: 96px;
+  font-size: 1.15rem;
+}
+
+.pricing-card {
+  gap: 10px;
+}
+
+.final-cta {
+  gap: 18px;
+  padding: 30px;
+}
+
+.site-footer {
+  padding-top: 12px;
+}
+
+@media (max-width: 1024px) {
+  .hero-panel {
+    padding-top: 0;
+  }
+
+  .section-heading-row a {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 840px) {
+  .site-nav {
+    gap: 10px;
+  }
+
+  .site-nav a {
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid rgba(29, 42, 42, 0.08);
+    background: rgba(255, 255, 255, 0.68);
+  }
+
+  .hero {
+    gap: 22px;
+  }
+}
+
+@media (max-width: 520px) {
+  .section {
+    padding: 36px 0;
+  }
+
+  .hero {
+    padding-top: 12px;
+  }
+
+  .hero-copy h1 {
+    font-size: 2.8rem;
+  }
+
+  .site-header {
+    gap: 14px;
+  }
+
+  .score-badge.large {
+    width: 98px;
+    height: 98px;
+    font-size: 2.2rem;
+  }
+}
 .product-page-shell {
   min-height: 100vh;
 }
