@@ -96,6 +96,57 @@ export async function getPendingDailyDigestCount(user: UserRecord | null) {
   return alerts.length;
 }
 
+export async function previewDailyDigests(options?: { force?: boolean; now?: Date }) {
+  const users = await getAllUsers();
+  const now = options?.now ?? new Date();
+  const force = options?.force ?? true;
+  let eligibleUsers = 0;
+  let usersWithPendingAlerts = 0;
+  let usersReadyToSend = 0;
+  let pendingAlertCount = 0;
+  let skippedForCadence = 0;
+  let skippedForWindow = 0;
+
+  for (const user of users) {
+    if (!canReceiveDailyDigest(user)) {
+      continue;
+    }
+
+    eligibleUsers += 1;
+    const alerts = await getDigestEligibleAlertsForUser(user);
+    if (!alerts.length) {
+      continue;
+    }
+
+    usersWithPendingAlerts += 1;
+    pendingAlertCount += alerts.length;
+
+    const canSendNow = await shouldSendDigestNow(user, now, force);
+    if (canSendNow) {
+      usersReadyToSend += 1;
+      continue;
+    }
+
+    if (!force && !isScheduleWindowOpen(now)) {
+      skippedForWindow += 1;
+    } else {
+      skippedForCadence += 1;
+    }
+  }
+
+  return {
+    force,
+    scheduleDate: getLocalScheduleDateKey(now),
+    scheduleLabel: formatDigestScheduleLabel(),
+    eligibleUsers,
+    usersWithPendingAlerts,
+    usersReadyToSend,
+    pendingAlertCount,
+    skippedForCadence,
+    skippedForWindow,
+  };
+}
+
 export async function runDailyDigestForUser(user: UserRecord, options?: { force?: boolean; now?: Date }) {
   if (!canReceiveDailyDigest(user) || !user.email || !user.profileId) {
     return null;

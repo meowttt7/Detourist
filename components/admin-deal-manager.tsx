@@ -35,6 +35,29 @@ type DeliveryBreakdown = {
   failed: number;
 };
 
+type AlertBackfillPreview = {
+  dealsConsidered: number;
+  profilesConsidered: number;
+  existingAlertCount: number;
+  missingMatches: number;
+  emailAlerts: number;
+  inAppAlerts: number;
+  instantEmailDeliveries: number;
+  dailyDigestCandidates: number;
+};
+
+type DigestRunPreview = {
+  force: boolean;
+  scheduleDate: string;
+  scheduleLabel: string;
+  eligibleUsers: number;
+  usersWithPendingAlerts: number;
+  usersReadyToSend: number;
+  pendingAlertCount: number;
+  skippedForCadence: number;
+  skippedForWindow: number;
+};
+
 type DemoSeedResult = {
   status: "created" | "existing";
   message: string;
@@ -86,6 +109,9 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [deals, setDeals] = useState<Deal[]>([]);
   const [status, setStatus] = useState<string>("Ready to publish.");
   const [loading, setLoading] = useState(true);
+  const [previewLoading, setPreviewLoading] = useState(true);
+  const [backfillPreview, setBackfillPreview] = useState<AlertBackfillPreview | null>(null);
+  const [digestPreview, setDigestPreview] = useState<DigestRunPreview | null>(null);
   const [backfillStatus, setBackfillStatus] = useState<string>("Alert matching runs automatically on publish.");
   const [demoStatus, setDemoStatus] = useState<string>("Seed demo mode to light up the dashboard with believable product activity.");
   const [digestStatus, setDigestStatus] = useState<string>("Daily digest waits for users on batch mode and can be triggered manually for now.");
@@ -98,8 +124,30 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     setLoading(false);
   }
 
+  async function loadPreviews() {
+    setPreviewLoading(true);
+
+    try {
+      const [backfillResponse, digestResponse] = await Promise.all([
+        fetch("/api/alerts/run", { cache: "no-store" }),
+        fetch("/api/digests/run", { cache: "no-store" }),
+      ]);
+
+      if (backfillResponse.ok) {
+        setBackfillPreview(await backfillResponse.json() as AlertBackfillPreview);
+      }
+
+      if (digestResponse.ok) {
+        setDigestPreview(await digestResponse.json() as DigestRunPreview);
+      }
+    } finally {
+      setPreviewLoading(false);
+    }
+  }
+
   useEffect(() => {
     void loadDeals();
+    void loadPreviews();
   }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -138,7 +186,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
 
     setDraft(defaultDraft);
     setStatus(`Deal published. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`);
-    await loadDeals();
+    await Promise.all([loadDeals(), loadPreviews()]);
     router.refresh();
   };
 
@@ -159,6 +207,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     }
 
     setBackfillStatus(`Backfill complete. ${payload.createdCount ?? 0} missing alerts created. Delivery: ${summarizeDelivery(payload.deliveries)}.`);
+    await loadPreviews();
     router.refresh();
   };
 
@@ -190,6 +239,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       `${payload.skippedForCadence ?? 0} skipped for cadence, ${payload.skippedForWindow ?? 0} skipped for timing. ` +
       `Delivery: ${summarizeDelivery(payload.deliveries)}.`,
     );
+    await loadPreviews();
     router.refresh();
   };
 
@@ -214,7 +264,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       `${payload.created.waitlistOnlyUsers} waitlist-only users, ${payload.created.events} events, ` +
       `${payload.created.alerts} alerts. Delivery: ${summarizeDelivery(payload.created.deliveries)}.`,
     );
-    await loadDeals();
+    await Promise.all([loadDeals(), loadPreviews()]);
     router.refresh();
   };
 
@@ -336,6 +386,13 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
           <p className="section-kicker">Alerts</p>
           <h3>Keep the alert inventory healthy</h3>
           <p className="support-text">Publishing new deals generates alerts automatically. Use backfill after importing profiles or adding seed content.</p>
+          <p className="support-text admin-preview-copy">
+            {previewLoading
+              ? "Loading preview..."
+              : backfillPreview
+                ? `Preview: ${backfillPreview.missingMatches} missing matches across ${backfillPreview.dealsConsidered} deals and ${backfillPreview.profilesConsidered} profiles. ${backfillPreview.emailAlerts} email, ${backfillPreview.inAppAlerts} in-app, ${backfillPreview.instantEmailDeliveries} instant sends, ${backfillPreview.dailyDigestCandidates} daily-digest candidates.`
+                : "Preview unavailable right now."}
+          </p>
           <div className="detail-actions-column admin-ops-actions">
             <button className="button button-secondary" type="button" onClick={handleBackfill}>Run alert backfill</button>
             <p className="status-copy">{backfillStatus}</p>
@@ -346,6 +403,13 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
           <p className="section-kicker">Digests</p>
           <h3>Send the daily batch</h3>
           <p className="support-text">Users on daily digest mode collect matched alerts until a digest run sends them as a single email. Scheduled runs can safely fire every hour and will only send after {digestScheduleLabel} once per local day.</p>
+          <p className="support-text admin-preview-copy">
+            {previewLoading
+              ? "Loading preview..."
+              : digestPreview
+                ? `Preview: ${digestPreview.usersReadyToSend} digests ready now across ${digestPreview.pendingAlertCount} pending alerts. ${digestPreview.usersWithPendingAlerts} users have digest-eligible alerts, ${digestPreview.eligibleUsers} users are on daily digest.`
+                : "Preview unavailable right now."}
+          </p>
           <div className="detail-actions-column admin-ops-actions">
             <button className="button button-secondary" type="button" onClick={handleDigestRun}>Run daily digests</button>
             <p className="status-copy">{digestStatus}</p>

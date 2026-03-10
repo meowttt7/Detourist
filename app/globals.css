@@ -1733,3 +1733,8 @@ input:disabled {
     grid-template-columns: 1fr;
   }
 }
+
+.admin-preview-copy {
+  margin-top: 12px;
+}
+

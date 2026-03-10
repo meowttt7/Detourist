@@ -46,6 +46,34 @@ function shouldSendInstantAlerts(user: UserRecord | null) {
   return Boolean(user?.email && user.alertPreference === "instant");
 }
 
+type AlertCandidate = {
+  linkedUser: UserRecord | null;
+  channel: "email" | "in_app";
+  score: number;
+  matchLabel: string;
+  reasonSummary: string;
+};
+
+function getAlertCandidate(deal: Deal, profile: StoredTravelerProfile, users: UserRecord[]): AlertCandidate | null {
+  if (profile.hiddenDealIds.includes(deal.id)) {
+    return null;
+  }
+
+  const score = scoreDeal(deal, profile);
+  if (score.score < MIN_ALERT_SCORE) {
+    return null;
+  }
+
+  const linked = findLinkedUser(profile.id, users);
+  return {
+    linkedUser: linked.user,
+    channel: linked.channel,
+    score: score.score,
+    matchLabel: score.matchLabel,
+    reasonSummary: buildReasonSummary(score.reasons),
+  };
+}
+
 async function deliverAlertIfNeeded(deal: Deal, alert: Awaited<ReturnType<typeof createAlert>>, user: UserRecord | null) {
   if (alert.channel !== "email" || !shouldSendInstantAlerts(user) || !user?.email) {
     return null;
@@ -71,29 +99,24 @@ async function deliverAlertIfNeeded(deal: Deal, alert: Awaited<ReturnType<typeof
 }
 
 async function buildAlertForProfile(deal: Deal, profile: StoredTravelerProfile, users: UserRecord[]) {
-  if (profile.hiddenDealIds.includes(deal.id)) {
+  const candidate = getAlertCandidate(deal, profile, users);
+  if (!candidate) {
     return null;
   }
 
-  const score = scoreDeal(deal, profile);
-  if (score.score < MIN_ALERT_SCORE) {
-    return null;
-  }
-
-  const linked = findLinkedUser(profile.id, users);
   const alert = await createAlert({
     dealId: deal.id,
     dealSlug: deal.slug,
     dealTitle: deal.title,
     profileId: profile.id,
-    userId: linked.user?.id ?? null,
-    score: score.score,
-    matchLabel: score.matchLabel,
-    reasonSummary: buildReasonSummary(score.reasons),
-    channel: linked.channel,
+    userId: candidate.linkedUser?.id ?? null,
+    score: candidate.score,
+    matchLabel: candidate.matchLabel,
+    reasonSummary: candidate.reasonSummary,
+    channel: candidate.channel,
   });
 
-  const delivery = await deliverAlertIfNeeded(deal, alert, linked.user);
+  const delivery = await deliverAlertIfNeeded(deal, alert, candidate.linkedUser);
 
   return {
     alert,
@@ -176,6 +199,62 @@ export async function generateAlertsForDeal(deal: Deal) {
   return {
     alerts: createdAlerts,
     deliveries: summarizeDeliveries(deliveries),
+  };
+}
+
+export async function previewBackfillAlerts() {
+  const [deals, profiles, users, existingAlerts] = await Promise.all([
+    getAllDeals(),
+    getAllProfiles(),
+    getAllUsers(),
+    getAllAlerts(),
+  ]);
+
+  const existingKeys = new Set(existingAlerts.map((alert) => `${alert.profileId}:${alert.dealId}`));
+  let missingMatches = 0;
+  let emailAlerts = 0;
+  let inAppAlerts = 0;
+  let instantEmailDeliveries = 0;
+  let dailyDigestCandidates = 0;
+
+  for (const deal of deals) {
+    for (const profile of profiles) {
+      const key = `${profile.id}:${deal.id}`;
+      if (existingKeys.has(key)) {
+        continue;
+      }
+
+      const candidate = getAlertCandidate(deal, profile, users);
+      if (!candidate) {
+        continue;
+      }
+
+      missingMatches += 1;
+      if (candidate.channel === "email") {
+        emailAlerts += 1;
+      } else {
+        inAppAlerts += 1;
+      }
+
+      if (shouldSendInstantAlerts(candidate.linkedUser)) {
+        instantEmailDeliveries += 1;
+      }
+
+      if (candidate.linkedUser?.email && candidate.linkedUser.alertPreference === "daily_digest") {
+        dailyDigestCandidates += 1;
+      }
+    }
+  }
+
+  return {
+    dealsConsidered: deals.length,
+    profilesConsidered: profiles.length,
+    existingAlertCount: existingAlerts.length,
+    missingMatches,
+    emailAlerts,
+    inAppAlerts,
+    instantEmailDeliveries,
+    dailyDigestCandidates,
   };
 }
 
