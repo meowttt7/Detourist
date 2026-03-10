@@ -256,6 +256,43 @@ export async function AdminDashboard() {
       <article className="detail-card">
         <div className="section-heading-row product-heading-row">
           <div>
+            <p className="section-kicker">Waitlist identities</p>
+            <h2>Recent signups and account linkage</h2>
+          </div>
+        </div>
+        <div className="admin-table">
+          <div className="admin-table-head">
+            <span>Email</span>
+            <span>Source</span>
+            <span>Linked account</span>
+            <span>Preference</span>
+            <span>Joined</span>
+          </div>
+          {lists.recentWaitlistIdentities.length ? (
+            lists.recentWaitlistIdentities.map((entry) => (
+              <div className="admin-table-row" key={`${entry.email}-${entry.createdAt}`}>
+                <span>{entry.email}</span>
+                <span>{entry.source}</span>
+                <span>
+                  {entry.linkageState === "linked_profile"
+                    ? `User ${entry.userId} / Profile ${entry.profileId}`
+                    : entry.linkageState === "account_only"
+                      ? `User ${entry.userId} (no profile)`
+                      : "Waitlist only"}
+                </span>
+                <span>{entry.alertPreference ? entry.alertPreference.replace("_", " ") : "not set"}</span>
+                <span>{new Date(entry.createdAt).toLocaleString()}</span>
+              </div>
+            ))
+          ) : (
+            <div className="admin-table-empty">No waitlist entries yet.</div>
+          )}
+        </div>
+      </article>
+
+      <article className="detail-card">
+        <div className="section-heading-row product-heading-row">
+          <div>
             <p className="section-kicker">Recent content</p>
             <h2>Newest deals in the feed</h2>
           </div>

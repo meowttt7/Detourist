@@ -1612,3 +1612,98 @@ input:disabled {
   margin: 0;
   color: var(--muted);
 }
+
+.admin-health-card {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-health-header {
+  align-items: start;
+}
+
+.admin-health-copy {
+  margin: 10px 0 0;
+}
+
+.admin-health-actions {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.admin-health-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-health-row {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid rgba(29, 42, 42, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.admin-health-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-health-row p {
+  margin: 8px 0 0;
+  color: var(--muted);
+}
+
+.admin-health-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-health-pill-ok {
+  background: rgba(15, 118, 110, 0.12);
+  color: var(--teal-deep);
+}
+
+.admin-health-pill-warn {
+  background: rgba(183, 121, 31, 0.18);
+  color: #7d4f12;
+}
+
+.admin-health-detail-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.admin-health-detail-list span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(29, 42, 42, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 0.82rem;
+  color: var(--muted-strong);
+}
+
+.admin-health-error {
+  width: fit-content;
+}
+
+@media (max-width: 900px) {
+  .admin-health-actions {
+    justify-items: stretch;
+  }
+}

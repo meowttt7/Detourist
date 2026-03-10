@@ -43,6 +43,12 @@ export async function getAdminAnalytics() {
   const profileOnlyUsers = users.filter((user) => !user.email && user.profileId);
 
   const userMap = new Map(users.map((user) => [user.id, user]));
+  const usersByEmail = new Map(
+    users
+      .filter((user) => Boolean(user.email))
+      .map((user) => [String(user.email).toLowerCase(), user]),
+  );
+  const profileIds = new Set(profiles.map((profile) => profile.id));
 
   const totalSaved = profiles.reduce((sum, profile) => sum + profile.savedDealIds.length, 0);
   const totalHidden = profiles.reduce((sum, profile) => sum + profile.hiddenDealIds.length, 0);
@@ -137,6 +143,25 @@ export async function getAdminAnalytics() {
   }));
 
   const recentEmailDeliveries = emailDeliveries.slice(0, 8);
+  const recentWaitlistIdentities = waitlist.slice(0, 10).map((entry) => {
+    const matchedUser = usersByEmail.get(entry.email.toLowerCase()) ?? null;
+    const hasLinkedProfile = Boolean(matchedUser?.profileId && profileIds.has(matchedUser.profileId));
+    const linkageState = matchedUser
+      ? hasLinkedProfile
+        ? "linked_profile"
+        : "account_only"
+      : "waitlist_only";
+
+    return {
+      email: entry.email,
+      source: entry.source,
+      createdAt: entry.createdAt,
+      linkageState,
+      userId: matchedUser?.id ?? null,
+      profileId: matchedUser?.profileId ?? null,
+      alertPreference: matchedUser?.alertPreference ?? null,
+    };
+  });
   const digestConfig = getDigestScheduleConfig();
   const mailer = getMailerConfigSummary();
 
@@ -203,6 +228,8 @@ export async function getAdminAnalytics() {
       recentEvents,
       recentAlerts,
       recentEmailDeliveries,
+      recentWaitlistIdentities,
     },
   };
 }
+
