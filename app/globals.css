@@ -2330,6 +2330,14 @@ input:disabled {
   text-decoration: underline;
 }
 
+.admin-duplicate-row-actions {
+  align-items: center;
+}
+
+.admin-duplicate-row-actions strong {
+  white-space: nowrap;
+}
+
 @media (max-width: 900px) {
   .admin-import-preview-head {
     flex-direction: column;

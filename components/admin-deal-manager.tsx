@@ -169,7 +169,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
   const [publishLoading, setPublishLoading] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState<DuplicateMatch[]>([]);
-  const [dealActionLoadingId, setDealActionLoadingId] = useState<string | null>(null);
+  const [dealActionLoadingKey, setDealActionLoadingKey] = useState<string | null>(null);
 
   async function loadDeals() {
     setLoading(true);
@@ -253,6 +253,34 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       .filter(Boolean),
   });
 
+  const formatDuplicateSummary = (duplicates: DuplicateMatch[] | undefined) => (
+    duplicates?.length
+      ? ` Conflicts: ${duplicates.map((match) => `${match.title} (${match.similarityLabel})`).join("; ")}.`
+      : ""
+  );
+
+  const finalizeSuccessfulPublish = async (publishedImportDraftId: string | null, nextStatus: string) => {
+    setDraft(defaultDraft);
+    setActiveImportDraftId(null);
+    setDuplicateConflict([]);
+
+    if (publishedImportDraftId) {
+      try {
+        await deleteImportDraftById(publishedImportDraftId);
+        setImportsStatus("Saved import removed from the queue after publish.");
+        nextStatus += " Saved import removed from queue.";
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Could not delete saved import after publish.";
+        setImportsStatus(message);
+        nextStatus += " The saved import could not be removed automatically.";
+      }
+    }
+
+    setStatus(nextStatus);
+    await Promise.all([loadDeals(), loadPreviews(), loadImportDrafts()]);
+    router.refresh();
+  };
+
   const publishDeal = async (allowDuplicatePublish = false) => {
     setPublishLoading(true);
     setDuplicateConflict([]);
@@ -280,10 +308,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
           setDuplicateConflict(payload.duplicates);
         }
 
-        const duplicateSummary = payload.duplicates?.length
-          ? ` Conflicts: ${payload.duplicates.map((match) => `${match.title} (${match.similarityLabel})`).join("; ")}.`
-          : "";
-        setStatus(`${payload.error ?? "Could not publish deal."}${duplicateSummary}`);
+        setStatus(`${payload.error ?? "Could not publish deal."}${formatDuplicateSummary(payload.duplicates)}`);
         if (response.status === 401) {
           router.push("/login?redirect=/admin");
         }
@@ -299,25 +324,7 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
         nextStatus += ` Similar live deals worth reviewing: ${payload.duplicateWarnings.map((match) => match.title).join(", ")}.`;
       }
 
-      setDraft(defaultDraft);
-      setActiveImportDraftId(null);
-      setDuplicateConflict([]);
-
-      if (publishedImportDraftId) {
-        try {
-          await deleteImportDraftById(publishedImportDraftId);
-          setImportsStatus("Saved import removed from the queue after publish.");
-          nextStatus += " Saved import removed from queue.";
-        } catch (error) {
-          const message = error instanceof Error ? error.message : "Could not delete saved import after publish.";
-          setImportsStatus(message);
-          nextStatus += " The saved import could not be removed automatically.";
-        }
-      }
-
-      setStatus(nextStatus);
-      await Promise.all([loadDeals(), loadPreviews(), loadImportDrafts()]);
-      router.refresh();
+      await finalizeSuccessfulPublish(publishedImportDraftId, nextStatus);
     } finally {
       setPublishLoading(false);
     }
@@ -337,8 +344,59 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     setStatus("Duplicate conflict dismissed. Review the deal details before publishing again.");
   };
 
+  const handleReplaceDeal = async (dealId: string, label: string) => {
+    setPublishLoading(true);
+    setDealActionLoadingKey(`replace:${dealId}`);
+    setStatus(`Replacing ${label} with the current draft...`);
+
+    try {
+      const response = await fetch("/api/deals/replace", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...buildPublishPayload(false),
+          replaceDealId: dealId,
+        }),
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        alertsGenerated?: number;
+        deliveryBreakdown?: DeliveryBreakdown;
+        duplicates?: DuplicateMatch[];
+        duplicateWarnings?: DuplicateMatch[];
+        replacedDeal?: Deal;
+      };
+
+      if (!response.ok) {
+        if (response.status === 409 && payload.duplicates?.length) {
+          setDuplicateConflict(payload.duplicates);
+        }
+
+        setStatus(`${payload.error ?? "Could not replace deal."}${formatDuplicateSummary(payload.duplicates)}`);
+        if (response.status === 401) {
+          router.push("/login?redirect=/admin");
+        }
+        return;
+      }
+
+      const publishedImportDraftId = activeImportDraftId;
+      let nextStatus = `Replaced ${payload.replacedDeal?.title ?? label} with a refreshed live deal. ${payload.alertsGenerated ?? 0} alerts matched. Delivery: ${summarizeDelivery(payload.deliveryBreakdown)}.`;
+      if (payload.duplicateWarnings?.length) {
+        nextStatus += ` Similar live deals worth reviewing: ${payload.duplicateWarnings.map((match) => match.title).join(", ")}.`;
+      }
+
+      await finalizeSuccessfulPublish(publishedImportDraftId, nextStatus);
+    } finally {
+      setPublishLoading(false);
+      setDealActionLoadingKey(null);
+    }
+  };
+
   const handleExpireDeal = async (dealId: string, label: string) => {
-    setDealActionLoadingId(dealId);
+    setDealActionLoadingKey(`expire:${dealId}`);
 
     try {
       const response = await fetch(`/api/deals/${dealId}/expire`, {
@@ -359,10 +417,9 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
       await Promise.all([loadDeals(), loadImportDrafts()]);
       router.refresh();
     } finally {
-      setDealActionLoadingId(null);
+      setDealActionLoadingKey(null);
     }
   };
-
   const handleBackfill = async () => {
     setBackfillStatus("Backfilling alerts across existing deals...");
 
@@ -654,10 +711,25 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                       <a href={`/deals/${match.dealSlug}`}>{match.title}</a>
                       {` | ${match.similarityLabel}`}
                     </span>
-                    <strong>{match.currency} {match.currentPrice}</strong>
-                    <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(match.dealId, match.title)} disabled={dealActionLoadingId === match.dealId}>
-                      {dealActionLoadingId === match.dealId ? "Expiring..." : "Expire live deal"}
-                    </button>
+                    <div className="admin-import-actions admin-duplicate-row-actions">
+                      <strong>{match.currency} {match.currentPrice}</strong>
+                      <button
+                        className="button button-small"
+                        type="button"
+                        onClick={() => handleReplaceDeal(match.dealId, match.title)}
+                        disabled={publishLoading || dealActionLoadingKey === `replace:${match.dealId}`}
+                      >
+                        {dealActionLoadingKey === `replace:${match.dealId}` ? "Replacing..." : "Replace with this draft"}
+                      </button>
+                      <button
+                        className="button button-small button-secondary"
+                        type="button"
+                        onClick={() => handleExpireDeal(match.dealId, match.title)}
+                        disabled={publishLoading || dealActionLoadingKey === `expire:${match.dealId}`}
+                      >
+                        {dealActionLoadingKey === `expire:${match.dealId}` ? "Expiring..." : "Expire live deal"}
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -923,8 +995,8 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                   <span>${deal.currentPrice}</span>
                   <a href={`/deals/${deal.slug}`}>Open</a>
                   {!expired ? (
-                    <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(deal.id, deal.title)} disabled={dealActionLoadingId === deal.id}>
-                      {dealActionLoadingId === deal.id ? "Expiring..." : "Expire"}
+                    <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(deal.id, deal.title)} disabled={dealActionLoadingKey === `expire:${deal.id}`}>
+                      {dealActionLoadingKey === `expire:${deal.id}` ? "Expiring..." : "Expire"}
                     </button>
                   ) : null}
                 </div>

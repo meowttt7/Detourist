@@ -66,10 +66,6 @@ function buildSimilarity(result: ComparableDeal, liveDeal: Deal) {
   }
 
   return {
-    routeMatch,
-    inverseRouteMatch,
-    brandMatch,
-    cabinMatch,
     priceGapPercent,
     similarityScore,
     confidence,
@@ -77,9 +73,16 @@ function buildSimilarity(result: ComparableDeal, liveDeal: Deal) {
   };
 }
 
-export function getDuplicateMatchesForDeal(result: ComparableDeal, liveDeals: Deal[], limit = 3): DealDuplicateMatch[] {
+export function getDuplicateMatchesForDeal(
+  result: ComparableDeal,
+  liveDeals: Deal[],
+  limit = 3,
+  excludedDealIds: string[] = [],
+): DealDuplicateMatch[] {
+  const excluded = new Set(excludedDealIds);
+
   return liveDeals
-    .filter((deal) => deal.type === result.type)
+    .filter((deal) => deal.type === result.type && !excluded.has(deal.id))
     .map((deal) => {
       const similarity = buildSimilarity(result, deal);
       return {
