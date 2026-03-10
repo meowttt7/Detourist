@@ -13,6 +13,30 @@ function MetricCard({ label, value, note }: { label: string; value: string | num
   );
 }
 
+function formatScheduledRunStatus(status: string) {
+  switch (status) {
+    case "success":
+      return "sent";
+    case "skipped":
+      return "skipped";
+    case "failed":
+      return "failed";
+    case "unauthorized":
+      return "blocked";
+    default:
+      return status;
+  }
+}
+
+function formatScheduledRunDeliveries(run: { metadata: { deliveries?: { sent: number; queued: number; failed: number } } }) {
+  const deliveries = run.metadata.deliveries;
+  if (!deliveries) {
+    return "No delivery summary.";
+  }
+
+  return `${deliveries.sent} sent, ${deliveries.queued} queued, ${deliveries.failed} failed`;
+}
+
 export async function AdminDashboard() {
   const analytics = await getAdminAnalytics();
   const { totals, operations, lists } = analytics;
@@ -89,6 +113,14 @@ export async function AdminDashboard() {
             <div className="mini-stat-row">
               <span>Cron secret</span>
               <strong>{operations.cronSecretConfigured ? "present" : "missing"}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Last scheduled digest</span>
+              <strong>
+                {operations.latestScheduledDigestRun
+                  ? `${formatScheduledRunStatus(operations.latestScheduledDigestRun.status)} ${new Date(operations.latestScheduledDigestRun.createdAt).toLocaleString()}`
+                  : "no runs yet"}
+              </strong>
             </div>
           </div>
         </article>
@@ -356,6 +388,56 @@ export async function AdminDashboard() {
         </div>
       </article>
 
+      <article className="detail-card">
+        <div className="section-heading-row product-heading-row">
+          <div>
+            <p className="section-kicker">Scheduler</p>
+            <h2>Recent cron-safe digest runs</h2>
+          </div>
+        </div>
+        {operations.latestScheduledDigestRun ? (
+          <div className="mini-stat-list admin-inline-summary-list">
+            <div className="mini-stat-row">
+              <span>Latest outcome</span>
+              <strong>{formatScheduledRunStatus(operations.latestScheduledDigestRun.status)}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Latest summary</span>
+              <strong>{operations.latestScheduledDigestRun.summary}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Latest delivery mix</span>
+              <strong>{formatScheduledRunDeliveries(operations.latestScheduledDigestRun)}</strong>
+            </div>
+          </div>
+        ) : (
+          <p>No scheduled digest runs recorded yet.</p>
+        )}
+        <div className="admin-table admin-table-events">
+          <div className="admin-table-head admin-table-head-events">
+            <span>Time</span>
+            <span>Status</span>
+            <span>Summary</span>
+            <span>Details</span>
+          </div>
+          {lists.recentScheduledDigestRuns.length ? (
+            lists.recentScheduledDigestRuns.map((run) => (
+              <div className="admin-table-row admin-table-row-events" key={run.id}>
+                <span>{new Date(run.createdAt).toLocaleString()}</span>
+                <span>{formatScheduledRunStatus(run.status)}</span>
+                <span>{run.summary}</span>
+                <span>
+                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} · ` : ""}
+                  {formatScheduledRunDeliveries(run)}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="admin-table-empty">No scheduled digest runs recorded yet.</div>
+          )}
+        </div>
+      </article>
+
       <AdminEmailDeliveries initialDeliveries={lists.recentEmailDeliveries} />
 
       <article className="detail-card">
@@ -389,4 +471,5 @@ export async function AdminDashboard() {
     </section>
   );
 }
+
 

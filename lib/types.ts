@@ -111,6 +111,37 @@ export type EmailDelivery = {
   sentAt: string | null;
 };
 
+export type ScheduledJobRunKind = "daily_digest_schedule";
+
+export type ScheduledJobRunStatus = "success" | "skipped" | "failed" | "unauthorized";
+
+export type ScheduledJobRunMetadata = {
+  method?: string;
+  errorMessage?: string | null;
+  force?: boolean;
+  scheduleDate?: string;
+  scheduleLabel?: string;
+  eligibleUsers?: number;
+  usersProcessed?: number;
+  digestsCreated?: number;
+  skippedForCadence?: number;
+  skippedForWindow?: number;
+  deliveries?: {
+    sent: number;
+    queued: number;
+    failed: number;
+  };
+};
+
+export type ScheduledJobRun = {
+  id: string;
+  kind: ScheduledJobRunKind;
+  status: ScheduledJobRunStatus;
+  summary: string;
+  metadata: ScheduledJobRunMetadata;
+  createdAt: string;
+};
+
 export type DealEventType = "detail_view" | "booking_click" | "save_deal" | "hide_deal";
 
 export type DealEvent = {
@@ -132,3 +163,4 @@ export type DealScore = {
   reasons: string[];
   warnings: string[];
 };
+

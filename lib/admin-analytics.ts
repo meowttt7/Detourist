@@ -6,6 +6,7 @@ import { getAllDeals } from "@/lib/deal-store";
 import { getAllEmailDeliveries, getEmailDeliveriesByReferences } from "@/lib/email-delivery-store";
 import { getAllEvents } from "@/lib/event-store";
 import { getMailerConfigSummary } from "@/lib/mailer";
+import { getLatestScheduledJobRun, getRecentScheduledJobRuns } from "@/lib/scheduled-job-run-store";
 import { getAllProfiles } from "@/lib/profile-store";
 import { getAllUsers } from "@/lib/user-store";
 import { getAllWaitlistEntries } from "@/lib/waitlist-store";
@@ -23,7 +24,7 @@ function countBy(items: string[]) {
 }
 
 export async function getAdminAnalytics() {
-  const [deals, profiles, users, waitlist, events, alerts, emailDeliveries] = await Promise.all([
+  const [deals, profiles, users, waitlist, events, alerts, emailDeliveries, latestScheduledDigestRun, recentScheduledDigestRuns] = await Promise.all([
     getAllDeals(),
     getAllProfiles(),
     getAllUsers(),
@@ -31,6 +32,8 @@ export async function getAdminAnalytics() {
     getAllEvents(),
     getAllAlerts(),
     getAllEmailDeliveries(),
+    getLatestScheduledJobRun("daily_digest_schedule"),
+    getRecentScheduledJobRuns("daily_digest_schedule", 6),
   ]);
 
   const now = Date.now();
@@ -214,6 +217,7 @@ export async function getAdminAnalytics() {
       digestTimeZone: digestConfig.timeZone,
       cronSecretConfigured: Boolean(digestConfig.cronSecret),
       tursoConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
+      latestScheduledDigestRun,
     },
     lists: {
       topDestinations,
@@ -231,9 +235,12 @@ export async function getAdminAnalytics() {
       recentAlerts,
       recentEmailDeliveries,
       recentWaitlistIdentities,
+      recentScheduledDigestRuns,
     },
   };
 }
+
+
 
 
 

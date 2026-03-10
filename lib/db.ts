@@ -213,6 +213,15 @@ async function runMigrations(client: Client) {
       consumed_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS scheduled_job_runs (
+      id TEXT PRIMARY KEY,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      metadata_json TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS idx_alerts_profile_deal ON alerts (profile_id, deal_id);
     CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts (created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_user_id ON alerts (user_id);
@@ -221,6 +230,8 @@ async function runMigrations(client: Client) {
     CREATE INDEX IF NOT EXISTS idx_user_auth_tokens_hash ON user_auth_tokens (token_hash);
     CREATE INDEX IF NOT EXISTS idx_user_auth_tokens_user_id ON user_auth_tokens (user_id);
     CREATE INDEX IF NOT EXISTS idx_user_auth_tokens_expires_at ON user_auth_tokens (expires_at);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_kind_created_at ON scheduled_job_runs (kind, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_scheduled_job_runs_status ON scheduled_job_runs (status);
     CREATE INDEX IF NOT EXISTS idx_deals_published_at ON deals (published_at DESC);
     CREATE INDEX IF NOT EXISTS idx_deals_slug ON deals (slug);
     CREATE INDEX IF NOT EXISTS idx_events_created_at ON events (created_at DESC);
@@ -457,5 +468,6 @@ export async function dbRun(sql: string, args: InArgs = []) {
 export function getDatabaseProviderLabel() {
   return isRemoteDatabaseConfigured() ? "turso" : "local-file";
 }
+
 
 
