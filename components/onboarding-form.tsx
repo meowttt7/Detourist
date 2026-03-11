@@ -92,7 +92,7 @@ export function OnboardingForm() {
           ? `Profile saved and linked to ${payload.user.email}. Sending you to the live deal feed...`
           : "Profile saved. Sending you to the live deal feed...",
       );
-      router.push("/deals");
+      router.push("/deals?status=profile-ready");
     } catch {
       setStatusMessage("We couldn't save your profile just now. Your local draft is still here.");
       setIsSaving(false);

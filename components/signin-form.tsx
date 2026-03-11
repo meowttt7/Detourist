@@ -43,7 +43,7 @@ export function SignInForm({ initialMessage = "" }: SignInFormProps) {
       ? `${payload.delivery.status} via ${payload.delivery.mode}`
       : "queued";
 
-    setMessage(`Sign-in link sent. Delivery: ${deliveryMessage}. If SMTP is not configured, check the local outbox file.`);
+    setMessage(`Sign-in link sent. Delivery: ${deliveryMessage}. Open it and we will drop you into your personalized feed or straight into profile setup.`);
     setSubmitting(false);
   }
 

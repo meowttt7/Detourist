@@ -33,7 +33,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
         <p className="section-kicker">Sign in</p>
         <h1>Open your Detourist account on any device.</h1>
         <p className="hero-text product-hero-text">
-          We send a secure magic link to your email. That keeps auth lightweight while still giving you cross-device access to your profile, alerts, and saved state.
+          We send a secure magic link to your email. If you already have a detour profile, the link drops you back into your personalized feed. If not, it takes you straight into setup.
         </p>
       </section>
       <section className="section product-section-tight login-form-shell">

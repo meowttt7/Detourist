@@ -41,7 +41,11 @@ export async function GET(request: Request) {
       })
     : existingUser;
 
-  const response = NextResponse.redirect(buildDetouristUrl("/account?status=signed-in"));
+  const destinationPath = storedUser.profileId
+    ? "/deals?status=signed-in"
+    : "/onboarding?status=welcome";
+
+  const response = NextResponse.redirect(buildDetouristUrl(destinationPath));
   response.cookies.set(getUserSessionCookieName(), createUserSessionToken(storedUser.id), {
     httpOnly: true,
     sameSite: "lax",
@@ -67,4 +71,3 @@ export async function GET(request: Request) {
 
   return response;
 }
-
