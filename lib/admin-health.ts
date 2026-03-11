@@ -1,12 +1,14 @@
+﻿import { usingFallbackAdminCredentials } from "@/lib/auth";
 import { dbGet, getBootstrapSeedModeLabel, getDatabaseProviderLabel, shouldSeedDatabaseFromJson } from "@/lib/db";
-import { getDigestScheduleConfig, formatDigestScheduleLabel } from "@/lib/digest-config";
-import { usingFallbackAdminCredentials } from "@/lib/auth";
+import { formatDigestScheduleLabel, getDigestScheduleConfig } from "@/lib/digest-config";
 import { getMailerConfigSummary } from "@/lib/mailer";
+import { getLatestScheduledJobRun } from "@/lib/scheduled-job-run-store";
+import { getAmadeusConfigStatus } from "@/lib/sources/amadeus";
 
 type HealthState = "ok" | "warn";
 
 type HealthCheck = {
-  key: "database" | "mailer" | "scheduler" | "canonical_url" | "admin_auth";
+  key: "database" | "mailer" | "scheduler" | "canonical_url" | "admin_auth" | "deal_ingestion";
   label: string;
   status: HealthState;
   summary: string;
@@ -189,6 +191,90 @@ function buildSchedulerCheck(): HealthCheck {
   };
 }
 
+async function buildDealIngestionCheck(): Promise<HealthCheck> {
+  const config = getAmadeusConfigStatus();
+  const latestProbe = await getLatestScheduledJobRun("amadeus_auth_probe");
+  const details = [
+    `provider=amadeus`,
+    `environment=${config.environment}`,
+    `base_url=${config.baseUrl}`,
+    `auth=${config.authState}`,
+    `client_id=${config.clientIdConfigured ? "present" : "missing"}`,
+    `client_secret=${config.clientSecretConfigured ? "present" : "missing"}`,
+  ];
+
+  if (latestProbe) {
+    details.push(`last_probe=${latestProbe.status}`);
+    details.push(`last_probe_at=${new Date(latestProbe.createdAt).toLocaleString()}`);
+    if (typeof latestProbe.metadata.tokenExpiresInSeconds === "number") {
+      details.push(`token_ttl=${latestProbe.metadata.tokenExpiresInSeconds}s`);
+    }
+    if (latestProbe.metadata.errorMessage) {
+      details.push(`last_error=${latestProbe.metadata.errorMessage}`);
+    }
+  } else {
+    details.push("last_probe=never");
+  }
+
+  if (config.authState === "missing") {
+    return {
+      key: "deal_ingestion",
+      label: "Deal ingestion",
+      status: "warn",
+      summary: "Amadeus credentials are missing, so live fare ingestion cannot run.",
+      details,
+    };
+  }
+
+  if (config.authState === "partial") {
+    return {
+      key: "deal_ingestion",
+      label: "Deal ingestion",
+      status: "warn",
+      summary: "Amadeus credentials are incomplete.",
+      details,
+    };
+  }
+
+  if (isProductionRuntime() && config.environment !== "production") {
+    return {
+      key: "deal_ingestion",
+      label: "Deal ingestion",
+      status: "warn",
+      summary: "Production runtime still points to Amadeus test environment.",
+      details,
+    };
+  }
+
+  if (!latestProbe) {
+    return {
+      key: "deal_ingestion",
+      label: "Deal ingestion",
+      status: "warn",
+      summary: "Amadeus is configured, but no auth probe has been run yet.",
+      details,
+    };
+  }
+
+  if (latestProbe.status !== "success") {
+    return {
+      key: "deal_ingestion",
+      label: "Deal ingestion",
+      status: "warn",
+      summary: "The latest Amadeus auth probe failed.",
+      details,
+    };
+  }
+
+  return {
+    key: "deal_ingestion",
+    label: "Deal ingestion",
+    status: "ok",
+    summary: "Amadeus credentials and latest auth probe look healthy.",
+    details,
+  };
+}
+
 function buildCanonicalUrlCheck(): HealthCheck {
   const rawUrl = (process.env.DETOURIST_APP_URL ?? "http://localhost:3000").trim();
   const parsed = parseAppUrl(rawUrl);
@@ -256,6 +342,7 @@ export async function getAdminHealthSnapshot(): Promise<AdminHealthSnapshot> {
     await buildDatabaseCheck(),
     buildMailerCheck(),
     buildSchedulerCheck(),
+    await buildDealIngestionCheck(),
     buildCanonicalUrlCheck(),
     buildAdminAuthCheck(),
   ];

@@ -1,4 +1,4 @@
-import type { FlightOfferSearchInput } from "@/lib/sources/types";
+﻿import type { FlightOfferSearchInput } from "@/lib/sources/types";
 
 type AmadeusAccessTokenResponse = {
   access_token: string;
@@ -23,12 +23,54 @@ type CachedToken = {
   expiresAt: number;
 };
 
+type AccessTokenRequestOptions = {
+  forceRefresh?: boolean;
+  signal?: AbortSignal;
+};
+
+export type AmadeusConfigStatus = {
+  baseUrl: string;
+  environment: "production" | "test";
+  clientIdConfigured: boolean;
+  clientSecretConfigured: boolean;
+  authState: "configured" | "partial" | "missing";
+};
+
+export type AmadeusAuthProbeResult = {
+  baseUrl: string;
+  environment: "production" | "test";
+  expiresInSeconds: number;
+};
+
 let cachedToken: CachedToken | null = null;
 
+function getAmadeusEnvironment(environment: string | undefined): "production" | "test" {
+  return environment?.trim().toLowerCase() === "production" ? "production" : "test";
+}
+
 function getAmadeusBaseUrl(environment: string | undefined) {
-  return environment?.trim().toLowerCase() === "production"
+  return getAmadeusEnvironment(environment) === "production"
     ? "https://api.amadeus.com"
     : "https://test.api.amadeus.com";
+}
+
+export function getAmadeusConfigStatus(): AmadeusConfigStatus {
+  const clientIdConfigured = Boolean(process.env.DETOURIST_AMADEUS_CLIENT_ID?.trim());
+  const clientSecretConfigured = Boolean(process.env.DETOURIST_AMADEUS_CLIENT_SECRET?.trim());
+  const environment = getAmadeusEnvironment(process.env.DETOURIST_AMADEUS_ENV);
+  const authState = clientIdConfigured && clientSecretConfigured
+    ? "configured"
+    : clientIdConfigured || clientSecretConfigured
+      ? "partial"
+      : "missing";
+
+  return {
+    baseUrl: getAmadeusBaseUrl(process.env.DETOURIST_AMADEUS_ENV),
+    environment,
+    clientIdConfigured,
+    clientSecretConfigured,
+    authState,
+  };
 }
 
 export function getAmadeusConfig(): AmadeusConfig | null {
@@ -54,9 +96,12 @@ function buildTokenBody(config: AmadeusConfig) {
   return body;
 }
 
-async function getAccessToken(config: AmadeusConfig) {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-    return cachedToken.accessToken;
+async function requestAccessToken(config: AmadeusConfig, options: AccessTokenRequestOptions = {}) {
+  if (!options.forceRefresh && cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
+    return {
+      accessToken: cachedToken.accessToken,
+      expiresInSeconds: Math.max(0, Math.floor((cachedToken.expiresAt - Date.now()) / 1000)),
+    };
   }
 
   const response = await fetch(`${config.baseUrl}/v1/security/oauth2/token`, {
@@ -66,6 +111,7 @@ async function getAccessToken(config: AmadeusConfig) {
     },
     body: buildTokenBody(config),
     cache: "no-store",
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -79,7 +125,34 @@ async function getAccessToken(config: AmadeusConfig) {
     expiresAt: Date.now() + payload.expires_in * 1000,
   };
 
-  return payload.access_token;
+  return {
+    accessToken: payload.access_token,
+    expiresInSeconds: payload.expires_in,
+  };
+}
+
+async function getAccessToken(config: AmadeusConfig) {
+  const token = await requestAccessToken(config);
+  return token.accessToken;
+}
+
+export async function probeAmadeusAuth(): Promise<AmadeusAuthProbeResult> {
+  const config = getAmadeusConfig();
+  if (!config) {
+    throw new Error("Amadeus credentials are not configured.");
+  }
+
+  const signal = typeof AbortSignal.timeout === "function" ? AbortSignal.timeout(10_000) : undefined;
+  const token = await requestAccessToken(config, {
+    forceRefresh: true,
+    signal,
+  });
+
+  return {
+    baseUrl: config.baseUrl,
+    environment: getAmadeusEnvironment(process.env.DETOURIST_AMADEUS_ENV),
+    expiresInSeconds: token.expiresInSeconds,
+  };
 }
 
 function buildFlightOfferQuery(input: FlightOfferSearchInput) {

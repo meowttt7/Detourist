@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 
@@ -16,10 +16,23 @@ type AdminHealthSnapshot = {
   }>;
 };
 
+type ProbeResponse = {
+  error?: string;
+  run?: {
+    summary: string;
+    status: string;
+    metadata?: {
+      errorMessage?: string | null;
+    };
+  };
+};
+
 export function AdminHealthPanel() {
   const [snapshot, setSnapshot] = useState<AdminHealthSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [probeStatus, setProbeStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [probing, setProbing] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -40,6 +53,29 @@ export function AdminHealthPanel() {
     }
   }, []);
 
+  const runAmadeusProbe = useCallback(async () => {
+    setProbing(true);
+    setProbeStatus("Running Amadeus auth probe...");
+
+    try {
+      const response = await fetch("/api/admin/sources/amadeus/probe", {
+        method: "POST",
+      });
+      const payload = await response.json() as ProbeResponse;
+
+      if (!response.ok) {
+        setProbeStatus(payload.error ?? payload.run?.metadata?.errorMessage ?? payload.run?.summary ?? "Amadeus auth probe failed.");
+      } else {
+        setProbeStatus(payload.run?.summary ?? "Amadeus auth probe succeeded.");
+      }
+    } catch (requestError) {
+      setProbeStatus(requestError instanceof Error ? requestError.message : "Amadeus auth probe failed.");
+    } finally {
+      setProbing(false);
+      await refresh();
+    }
+  }, [refresh]);
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
@@ -50,11 +86,14 @@ export function AdminHealthPanel() {
         <div>
           <p className="section-kicker">Health</p>
           <h2>Runtime readiness checks</h2>
-          <p className="admin-health-copy">Read-only checks for database reachability, mailer mode, scheduler protection, canonical URL, and admin auth guardrails.</p>
+          <p className="admin-health-copy">Read-only checks for database reachability, mailer mode, scheduler protection, canonical URL, admin auth guardrails, and Amadeus ingestion readiness.</p>
         </div>
         <div className="admin-health-actions">
-          <button className="button button-small button-secondary" type="button" onClick={() => void refresh()} disabled={loading}>
+          <button className="button button-small button-secondary" type="button" onClick={() => void refresh()} disabled={loading || probing}>
             {loading ? "Checking..." : "Refresh checks"}
+          </button>
+          <button className="button button-small button-secondary" type="button" onClick={() => void runAmadeusProbe()} disabled={loading || probing}>
+            {probing ? "Probing..." : "Run Amadeus probe"}
           </button>
           {snapshot ? (
             <p className="status-copy">Last run {new Date(snapshot.generatedAt).toLocaleString()}</p>
@@ -63,6 +102,7 @@ export function AdminHealthPanel() {
       </div>
 
       {error ? <p className="status-copy warning-pill admin-health-error">{error}</p> : null}
+      {probeStatus ? <p className="status-copy admin-inline-status">{probeStatus}</p> : null}
 
       {snapshot ? (
         <div className="admin-health-list">

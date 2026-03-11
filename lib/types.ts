@@ -1,4 +1,4 @@
-export type DealType = "flight" | "hotel";
+﻿export type DealType = "flight" | "hotel";
 
 export type Deal = {
   id: string;
@@ -111,11 +111,16 @@ export type EmailDelivery = {
   sentAt: string | null;
 };
 
-export type ScheduledJobRunKind = "daily_digest_schedule";
+export type ScheduledJobRunKind = "daily_digest_schedule" | "amadeus_auth_probe";
 
 export type ScheduledJobRunStatus = "success" | "skipped" | "failed" | "unauthorized";
 
 export type ScheduledJobRunMetadata = {
+  provider?: string;
+  baseUrl?: string;
+  amadeusEnvironment?: string;
+  authState?: string;
+  tokenExpiresInSeconds?: number;
   method?: string;
   errorMessage?: string | null;
   force?: boolean;
@@ -163,4 +168,3 @@ export type DealScore = {
   reasons: string[];
   warnings: string[];
 };
-
