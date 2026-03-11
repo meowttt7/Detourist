@@ -599,6 +599,35 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  const applyExistingDealAsDraft = (deal: Deal) => {
+    setDraft({
+      type: deal.type,
+      title: deal.title,
+      summary: deal.summary,
+      origin: deal.origin,
+      destination: deal.destination,
+      destinationRegion: deal.destinationRegion,
+      cabin: deal.cabin,
+      airlineOrBrand: deal.airlineOrBrand,
+      currentPrice: deal.currentPrice,
+      referencePrice: deal.referencePrice,
+      currency: deal.currency,
+      stops: deal.stops,
+      totalDurationHours: deal.totalDurationHours,
+      overnight: deal.overnight,
+      repositionRequired: deal.repositionRequired,
+      repositionFrom: deal.repositionFrom ?? "",
+      catchSummary: deal.catchSummary,
+      whyWorthIt: deal.whyWorthIt,
+      bookingUrl: deal.bookingUrl,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      tags: deal.tags.join(", "),
+    });
+    setActiveImportDraftId(null);
+    setDuplicateConflict([]);
+    setStatus(`Loaded ${deal.title} into the publish form. Refresh the copy, pricing, or expiry before publishing the next version.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
   return (
     <div className="admin-layout">
       <form className="product-form" onSubmit={handleSubmit}>
@@ -994,6 +1023,9 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
                 <div className="mini-deal-meta mini-deal-meta-admin">
                   <span>${deal.currentPrice}</span>
                   <a href={`/deals/${deal.slug}`}>Open</a>
+                  <button className="button button-small button-secondary" type="button" onClick={() => applyExistingDealAsDraft(deal)}>
+                    Use as draft
+                  </button>
                   {!expired ? (
                     <button className="button button-small button-secondary" type="button" onClick={() => handleExpireDeal(deal.id, deal.title)} disabled={dealActionLoadingKey === `expire:${deal.id}`}>
                       {dealActionLoadingKey === `expire:${deal.id}` ? "Expiring..." : "Expire"}
