@@ -147,7 +147,7 @@ export async function getAdminAnalytics() {
   }));
 
   const recentEmailDeliveries = emailDeliveries.slice(0, 40);
-  const recentWaitlistIdentities = waitlist.slice(0, 10).map((entry) => {
+  const recentWaitlistIdentities = waitlist.slice(0, 40).map((entry) => {
     const matchedUser = usersByEmail.get(entry.email.toLowerCase()) ?? null;
     const hasLinkedProfile = Boolean(matchedUser?.profileId && profileIds.has(matchedUser.profileId));
     const linkageState = matchedUser

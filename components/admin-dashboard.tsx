@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminEmailDeliveries } from "@/components/admin-email-deliveries";
+import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
 import { getAdminAnalytics } from "@/lib/admin-analytics";
 
 function MetricCard({ label, value, note }: { label: string; value: string | number; note: string }) {
@@ -289,42 +290,7 @@ export async function AdminDashboard() {
         </article>
       </div>
 
-      <article className="detail-card">
-        <div className="section-heading-row product-heading-row">
-          <div>
-            <p className="section-kicker">Waitlist identities</p>
-            <h2>Recent signups and account linkage</h2>
-          </div>
-        </div>
-        <div className="admin-table">
-          <div className="admin-table-head">
-            <span>Email</span>
-            <span>Source</span>
-            <span>Linked account</span>
-            <span>Preference</span>
-            <span>Joined</span>
-          </div>
-          {lists.recentWaitlistIdentities.length ? (
-            lists.recentWaitlistIdentities.map((entry) => (
-              <div className="admin-table-row" key={`${entry.email}-${entry.createdAt}`}>
-                <span>{entry.email}</span>
-                <span>{entry.source}</span>
-                <span>
-                  {entry.linkageState === "linked_profile"
-                    ? `User ${entry.userId} / Profile ${entry.profileId}`
-                    : entry.linkageState === "account_only"
-                      ? `User ${entry.userId} (no profile)`
-                      : "Waitlist only"}
-                </span>
-                <span>{entry.alertPreference ? entry.alertPreference.replace("_", " ") : "not set"}</span>
-                <span>{new Date(entry.createdAt).toLocaleString()}</span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-table-empty">No waitlist entries yet.</div>
-          )}
-        </div>
-      </article>
+      <AdminWaitlistIdentities initialEntries={lists.recentWaitlistIdentities} />
 
       <article className="detail-card">
         <div className="section-heading-row product-heading-row">
@@ -427,7 +393,7 @@ export async function AdminDashboard() {
                 <span>{formatScheduledRunStatus(run.status)}</span>
                 <span>{run.summary}</span>
                 <span>
-                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} · ` : ""}
+                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} Ã‚Â· ` : ""}
                   {formatScheduledRunDeliveries(run)}
                 </span>
               </div>
