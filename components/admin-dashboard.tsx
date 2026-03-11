@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { AdminEmailDeliveries } from "@/components/admin-email-deliveries";
+import { AdminRecentAlerts } from "@/components/admin-recent-alerts";
 import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
 import { getAdminAnalytics } from "@/lib/admin-analytics";
 
@@ -323,36 +324,7 @@ export async function AdminDashboard() {
         </div>
       </article>
 
-      <article className="detail-card">
-        <div className="section-heading-row product-heading-row">
-          <div>
-            <p className="section-kicker">Recent alerts</p>
-            <h2>Latest generated matches</h2>
-          </div>
-        </div>
-        <div className="admin-table admin-table-events">
-          <div className="admin-table-head admin-table-head-events">
-            <span>Deal</span>
-            <span>Channel</span>
-            <span>Score</span>
-            <span>Status</span>
-            <span>Created</span>
-          </div>
-          {lists.recentAlerts.length ? (
-            lists.recentAlerts.map((alert) => (
-              <div className="admin-table-row admin-table-row-events" key={alert.id}>
-                <Link href={`/deals/${alert.dealSlug}`}>{alert.dealTitle}</Link>
-                <span>{alert.channel}</span>
-                <span>{alert.score}</span>
-                <span>{alert.status}</span>
-                <span>{new Date(alert.createdAt).toLocaleString()}</span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-table-empty">No alerts generated yet.</div>
-          )}
-        </div>
-      </article>
+      <AdminRecentAlerts initialAlerts={lists.recentAlerts} />
 
       <article className="detail-card">
         <div className="section-heading-row product-heading-row">
@@ -393,7 +365,7 @@ export async function AdminDashboard() {
                 <span>{formatScheduledRunStatus(run.status)}</span>
                 <span>{run.summary}</span>
                 <span>
-                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} Ã‚Â· ` : ""}
+                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} Ãƒâ€šÃ‚Â· ` : ""}
                   {formatScheduledRunDeliveries(run)}
                 </span>
               </div>

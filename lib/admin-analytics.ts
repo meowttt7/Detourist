@@ -136,7 +136,7 @@ export async function getAdminAnalytics() {
     createdAt: event.createdAt,
   }));
 
-  const recentAlerts = alerts.slice(0, 8).map((alert) => ({
+  const recentAlerts = alerts.slice(0, 40).map((alert) => ({
     id: alert.id,
     dealTitle: alert.dealTitle,
     dealSlug: alert.dealSlug,
