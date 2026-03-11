@@ -12,10 +12,16 @@ type CreateAlertInput = {
   score: number;
   matchLabel: string;
   reasonSummary: string;
+  reasons: string[];
+  warnings: string[];
   channel: AlertChannel;
 };
 
 function mapAlert(row: Record<string, unknown>): DealAlert {
+  const parsedReasons = row.reasons_json ? JSON.parse(String(row.reasons_json)) as string[] : [];
+  const parsedWarnings = row.warnings_json ? JSON.parse(String(row.warnings_json)) as string[] : [];
+  const reasonSummary = String(row.reason_summary);
+
   return {
     id: String(row.id),
     dealId: String(row.deal_id),
@@ -25,7 +31,9 @@ function mapAlert(row: Record<string, unknown>): DealAlert {
     userId: row.user_id ? String(row.user_id) : null,
     score: Number(row.score),
     matchLabel: String(row.match_label),
-    reasonSummary: String(row.reason_summary),
+    reasonSummary,
+    reasons: parsedReasons.length ? parsedReasons : [reasonSummary],
+    warnings: parsedWarnings,
     channel: row.channel as AlertChannel,
     status: row.status as AlertStatus,
     digestDeliveryId: row.digest_delivery_id ? String(row.digest_delivery_id) : null,
@@ -103,6 +111,8 @@ export async function createAlert(input: CreateAlertInput) {
     score: input.score,
     matchLabel: input.matchLabel,
     reasonSummary: input.reasonSummary,
+    reasons: input.reasons,
+    warnings: input.warnings,
     channel: input.channel,
     status: "new",
     digestDeliveryId: null,
@@ -115,8 +125,8 @@ export async function createAlert(input: CreateAlertInput) {
     `
       INSERT INTO alerts (
         id, deal_id, deal_slug, deal_title, profile_id, user_id, score,
-        match_label, reason_summary, channel, status, digest_delivery_id, digested_at, created_at, viewed_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        match_label, reason_summary, reasons_json, warnings_json, channel, status, digest_delivery_id, digested_at, created_at, viewed_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     [
       alert.id,
@@ -128,6 +138,8 @@ export async function createAlert(input: CreateAlertInput) {
       alert.score,
       alert.matchLabel,
       alert.reasonSummary,
+      JSON.stringify(alert.reasons),
+      JSON.stringify(alert.warnings),
       alert.channel,
       alert.status,
       alert.digestDeliveryId,

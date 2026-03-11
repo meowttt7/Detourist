@@ -1,4 +1,4 @@
-﻿export type DealType = "flight" | "hotel";
+export type DealType = "flight" | "hotel";
 
 export type Deal = {
   id: string;
@@ -74,6 +74,8 @@ export type DealAlert = {
   score: number;
   matchLabel: string;
   reasonSummary: string;
+  reasons: string[];
+  warnings: string[];
   channel: AlertChannel;
   status: AlertStatus;
   digestDeliveryId: string | null;

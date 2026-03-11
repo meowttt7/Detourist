@@ -48,9 +48,24 @@ export function AccountAlerts({ initialAlerts }: AccountAlertsProps) {
           {alerts.map((alert) => (
             <div className="account-alert-card" key={alert.id}>
               <div>
-                <p className="mini-label">{alert.channel === "email" ? "Email-ready" : "In-app"} | Score {alert.score}</p>
+                <p className="mini-label">{alert.channel === "email" ? "Email-ready" : "In-app"} | Score {alert.score} | {alert.matchLabel}</p>
                 <h3>{alert.dealTitle}</h3>
                 <p>{alert.reasonSummary}</p>
+                <div className="account-alert-reasons">
+                  {alert.reasons.slice(0, 3).map((reason) => (
+                    <p key={`${alert.id}-${reason}`}>{reason}</p>
+                  ))}
+                </div>
+                {alert.warnings.length ? (
+                  <div className="account-alert-warnings">
+                    <span className="mini-label">Tradeoffs to check</span>
+                    <div className="reason-stack account-tag-row">
+                      {alert.warnings.map((warning) => (
+                        <span className="insight-pill" key={`${alert.id}-warning-${warning}`}>{warning}</span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="account-alert-actions">
                 <span className={`alert-status-pill ${alert.status === "viewed" ? "alert-status-viewed" : "alert-status-new"}`}>

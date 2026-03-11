@@ -182,6 +182,8 @@ async function runMigrations(client: Client) {
       score INTEGER NOT NULL,
       match_label TEXT NOT NULL,
       reason_summary TEXT NOT NULL,
+      reasons_json TEXT NOT NULL DEFAULT '[]',
+      warnings_json TEXT NOT NULL DEFAULT '[]',
       channel TEXT NOT NULL,
       status TEXT NOT NULL,
       digest_delivery_id TEXT,
@@ -262,6 +264,13 @@ async function runMigrations(client: Client) {
 
   if (!(await tableHasColumn(client, "alerts", "digested_at"))) {
     await runWithClient(client, "ALTER TABLE alerts ADD COLUMN digested_at TEXT");
+  }
+  if (!(await tableHasColumn(client, "alerts", "reasons_json"))) {
+    await runWithClient(client, "ALTER TABLE alerts ADD COLUMN reasons_json TEXT NOT NULL DEFAULT '[]'");
+  }
+
+  if (!(await tableHasColumn(client, "alerts", "warnings_json"))) {
+    await runWithClient(client, "ALTER TABLE alerts ADD COLUMN warnings_json TEXT NOT NULL DEFAULT '[]'");
   }
 
   if (!(await tableHasColumn(client, "email_deliveries", "kind"))) {

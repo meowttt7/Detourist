@@ -192,10 +192,38 @@ async function deliverEmail(to: string, subject: string, html: string, id: strin
   }
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderReasonList(items: string[], title: string, accent: string) {
+  if (!items.length) {
+    return "";
+  }
+
+  const rows = items
+    .map((item) => `<li style="margin-bottom: 8px;">${escapeHtml(item)}</li>`)
+    .join("");
+
+  return `
+    <div style="margin-top: 14px; padding: 14px 16px; border-radius: 16px; background: ${accent};">
+      <p style="margin: 0 0 10px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #0b4f4a; font-weight: 700;">${escapeHtml(title)}</p>
+      <ul style="margin: 0; padding-left: 18px; color: #1d2a2a;">${rows}</ul>
+    </div>
+  `;
+}
+
 function renderAlertEmail(input: AlertEmailInput) {
   const dealLink = `${getBaseUrl()}/deals/${input.alert.dealSlug}`;
   const title = `${input.deal.origin} to ${input.deal.destination} | ${input.deal.cabin}`;
   const subject = `Detourist alert: ${input.deal.title}`;
+  const reasonsHtml = renderReasonList(input.alert.reasons.slice(0, 2), "Why this matched you", "rgba(15, 118, 110, 0.08)");
+  const warningsHtml = renderReasonList(input.alert.warnings, "Tradeoffs to check", "rgba(183, 121, 31, 0.12)");
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1d2a2a; line-height: 1.6; max-width: 640px; margin: 0 auto; padding: 24px;">
       <p style="text-transform: uppercase; letter-spacing: 0.08em; font-size: 12px; color: #0b4f4a; font-weight: 700;">Detourist alert</p>
@@ -205,9 +233,11 @@ function renderAlertEmail(input: AlertEmailInput) {
         <p style="margin: 0 0 8px;"><strong>Worth-It Score:</strong> ${input.alert.score} (${input.alert.matchLabel})</p>
         <p style="margin: 0 0 8px;"><strong>Current price:</strong> ${input.deal.currency} ${input.deal.currentPrice}</p>
         <p style="margin: 0 0 8px;"><strong>Usual price:</strong> ${input.deal.currency} ${input.deal.referencePrice}</p>
-        <p style="margin: 0;"><strong>Why it matched:</strong> ${input.alert.reasonSummary}</p>
+        <p style="margin: 0;"><strong>Match summary:</strong> ${escapeHtml(input.alert.reasonSummary)}</p>
       </div>
-      <p>${input.deal.summary}</p>
+      ${reasonsHtml}
+      ${warningsHtml}
+      <p style="margin-top: 18px;">${input.deal.summary}</p>
       <p><strong>The catch:</strong> ${input.deal.catchSummary}</p>
       <p><strong>Why it is worth it:</strong> ${input.deal.whyWorthIt}</p>
       <p style="margin-top: 28px;">
@@ -225,14 +255,18 @@ function renderDigestEmail(input: DigestEmailInput) {
   const digestRows = input.alerts
     .map(({ alert, deal }) => {
       const dealLink = `${getBaseUrl()}/deals/${alert.dealSlug}`;
+      const reasonsHtml = renderReasonList(alert.reasons.slice(0, 2), "Why this matched you", "rgba(15, 118, 110, 0.08)");
+      const warningsHtml = renderReasonList(alert.warnings, "Tradeoffs to check", "rgba(183, 121, 31, 0.12)");
       return `
         <div style="margin-bottom: 18px; padding: 18px; border-radius: 18px; background: #f6f0e8; border: 1px solid rgba(29,42,42,0.08);">
           <p style="margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; color: #0b4f4a; font-weight: 700;">Worth-It Score ${alert.score}</p>
           <h2 style="font-family: Georgia, serif; font-size: 22px; margin: 0 0 8px;">${deal.title}</h2>
           <p style="margin: 0 0 8px; color: #5f6b67;">${deal.origin} to ${deal.destination} | ${deal.cabin}</p>
           <p style="margin: 0 0 8px;"><strong>${deal.currency} ${deal.currentPrice}</strong> now, usually ${deal.currency} ${deal.referencePrice}</p>
-          <p style="margin: 0 0 8px;"><strong>Why it matched:</strong> ${alert.reasonSummary}</p>
-          <p style="margin: 0 0 12px;"><strong>The catch:</strong> ${deal.catchSummary}</p>
+          <p style="margin: 0 0 8px;"><strong>Match summary:</strong> ${escapeHtml(alert.reasonSummary)}</p>
+          ${reasonsHtml}
+          ${warningsHtml}
+          <p style="margin: 12px 0 12px;"><strong>The catch:</strong> ${deal.catchSummary}</p>
           <a href="${dealLink}" style="display: inline-block; padding: 12px 18px; border-radius: 999px; background: #0f766e; color: #ffffff; text-decoration: none; font-weight: 700;">Review this deal</a>
         </div>
       `;

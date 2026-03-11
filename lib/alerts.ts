@@ -52,6 +52,8 @@ type AlertCandidate = {
   score: number;
   matchLabel: string;
   reasonSummary: string;
+  reasons: string[];
+  warnings: string[];
 };
 
 function getAlertCandidate(deal: Deal, profile: StoredTravelerProfile, users: UserRecord[]): AlertCandidate | null {
@@ -71,6 +73,8 @@ function getAlertCandidate(deal: Deal, profile: StoredTravelerProfile, users: Us
     score: score.score,
     matchLabel: score.matchLabel,
     reasonSummary: buildReasonSummary(score.reasons),
+    reasons: score.reasons,
+    warnings: score.warnings,
   };
 }
 
@@ -113,6 +117,8 @@ async function buildAlertForProfile(deal: Deal, profile: StoredTravelerProfile, 
     score: candidate.score,
     matchLabel: candidate.matchLabel,
     reasonSummary: candidate.reasonSummary,
+    reasons: candidate.reasons,
+    warnings: candidate.warnings,
     channel: candidate.channel,
   });
 
