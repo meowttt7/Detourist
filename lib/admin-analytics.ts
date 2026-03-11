@@ -128,7 +128,7 @@ export async function getAdminAnalytics() {
     currency: deal.currency,
   }));
 
-  const recentEvents = events.slice(0, 8).map((event) => ({
+  const recentEvents = events.slice(0, 40).map((event) => ({
     id: event.id,
     type: event.type,
     surface: event.surface,

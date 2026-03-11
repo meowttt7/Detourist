@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminEmailDeliveries } from "@/components/admin-email-deliveries";
 import { AdminRecentAlerts } from "@/components/admin-recent-alerts";
+import { AdminRecentEvents } from "@/components/admin-recent-events";
 import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
 import { getAdminAnalytics } from "@/lib/admin-analytics";
 
@@ -365,7 +366,7 @@ export async function AdminDashboard() {
                 <span>{formatScheduledRunStatus(run.status)}</span>
                 <span>{run.summary}</span>
                 <span>
-                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} Ãƒâ€šÃ‚Â· ` : ""}
+                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ` : ""}
                   {formatScheduledRunDeliveries(run)}
                 </span>
               </div>
@@ -378,34 +379,7 @@ export async function AdminDashboard() {
 
       <AdminEmailDeliveries initialDeliveries={lists.recentEmailDeliveries} />
 
-      <article className="detail-card">
-        <div className="section-heading-row product-heading-row">
-          <div>
-            <p className="section-kicker">Recent behavior</p>
-            <h2>Latest tracked actions</h2>
-          </div>
-        </div>
-        <div className="admin-table admin-table-events">
-          <div className="admin-table-head admin-table-head-events">
-            <span>Event</span>
-            <span>Surface</span>
-            <span>Deal</span>
-            <span>Time</span>
-          </div>
-          {lists.recentEvents.length ? (
-            lists.recentEvents.map((event) => (
-              <div className="admin-table-row admin-table-row-events" key={event.id}>
-                <span>{event.type}</span>
-                <span>{event.surface}</span>
-                <span>{event.dealSlug ?? "Unknown deal"}</span>
-                <span>{new Date(event.createdAt).toLocaleString()}</span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-table-empty">No tracked events yet.</div>
-          )}
-        </div>
-      </article>
+      <AdminRecentEvents initialEvents={lists.recentEvents} />
     </section>
   );
 }
