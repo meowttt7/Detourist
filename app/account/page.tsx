@@ -22,6 +22,81 @@ export default async function AccountPage() {
   const savedCount = profile?.savedDealIds.length ?? 0;
   const hiddenCount = profile?.hiddenDealIds.length ?? 0;
   const unreadAlerts = alerts.filter((alert) => alert.status === "new").length;
+  const notificationsPaused = user?.alertPreference === "paused";
+
+  const readinessItems = [
+    {
+      label: "Profile",
+      value: hasProfile ? "Ready" : "Missing",
+      note: hasProfile ? "Detourist can rank around your actual tradeoff tolerance." : "Create a detour profile to personalize scores and alerts.",
+    },
+    {
+      label: "Email",
+      value: hasEmail ? "Linked" : "Not linked",
+      note: hasEmail ? "Alerts and sign-in links can reach you outside the app." : "Add an email so strong matches can leave the app and hit your inbox.",
+    },
+    {
+      label: "Alert mode",
+      value: user ? user.alertPreference.replace("_", " ") : "Not set",
+      note: notificationsPaused
+        ? "Detourist will keep your feed intact, but alert emails are currently paused."
+        : "Your delivery preference controls whether matches send instantly, batch daily, or stay quiet.",
+    },
+    {
+      label: "Momentum",
+      value: unreadAlerts > 0 ? `${unreadAlerts} new alerts` : savedCount > 0 ? `${savedCount} saved deals` : "Needs activity",
+      note: unreadAlerts > 0
+        ? "You have fresh matches worth reviewing right now."
+        : savedCount > 0
+          ? "You have enough signal to keep tuning the feed and compare against alerts."
+          : "Open the feed and start saving or hiding deals so Detourist learns faster.",
+    },
+  ];
+
+  const nextStep = !hasProfile
+    ? {
+        title: "Set your detour profile first",
+        body: "That is the switch that turns Detourist from a good premium-deals feed into a product that understands your actual tolerance for stops, overnight pain, and pricing.",
+        href: "/onboarding",
+        label: "Create your detour profile",
+        secondaryHref: "/deals",
+        secondaryLabel: "Browse deals first",
+      }
+    : !hasEmail
+      ? {
+          title: "Link an email so matches can follow you",
+          body: "You already have the profile layer. The next unlock is letting Detourist reach you outside the app when a deal is genuinely worth the interruption.",
+          href: "/deals",
+          label: "Open personalized deals",
+          secondaryHref: "/onboarding",
+          secondaryLabel: "Tune profile",
+        }
+      : notificationsPaused
+        ? {
+            title: "Your profile is ready, but nudges are paused",
+            body: "If you want Detourist to work more proactively, switch alert delivery back to instant or daily digest above.",
+            href: "/deals",
+            label: "Review live deals",
+            secondaryHref: "/onboarding",
+            secondaryLabel: "Update profile",
+          }
+        : unreadAlerts > 0
+          ? {
+              title: "You already have fresh matches waiting",
+              body: "This is a good moment to review the unread alerts below and decide whether any of them justify a real booking window for you.",
+              href: "/deals",
+              label: "Open personalized deals",
+              secondaryHref: "/onboarding",
+              secondaryLabel: "Tune profile",
+            }
+          : {
+              title: "The account is ready, now teach the feed faster",
+              body: "Open the feed, save the deals you would genuinely take, and hide the ones that are too annoying. That gives Detourist much better signal before the next alerts cycle.",
+              href: "/deals",
+              label: "Open personalized deals",
+              secondaryHref: "/onboarding",
+              secondaryLabel: "Tune profile",
+            };
 
   return (
     <main className="page-shell product-page-shell">
@@ -30,8 +105,29 @@ export default async function AccountPage() {
         <p className="section-kicker">Account</p>
         <h1>Your Detourist identity, profile, and saved-deal state in one place.</h1>
         <p className="hero-text product-hero-text">
-          This page is the first unified view of who the product thinks you are: your linked email, your detour profile, and the state that powers your feed.
+          This is where Detourist shows whether your profile is ready, whether alerts can actually reach you, and what the smartest next action is from here.
         </p>
+      </section>
+
+      <section className="section product-section-tight">
+        <article className="detail-card account-readiness-card">
+          <p className="section-kicker">Readiness</p>
+          <h2>{nextStep.title}</h2>
+          <p className="support-text">{nextStep.body}</p>
+          <div className="account-readiness-grid">
+            {readinessItems.map((item) => (
+              <div className="account-readiness-item" key={item.label}>
+                <span>{item.label}</span>
+                <strong className="account-readiness-value">{item.value}</strong>
+                <p>{item.note}</p>
+              </div>
+            ))}
+          </div>
+          <div className="detail-actions-column account-empty-actions">
+            <Link className="button" href={nextStep.href}>{nextStep.label}</Link>
+            <Link className="button button-secondary" href={nextStep.secondaryHref}>{nextStep.secondaryLabel}</Link>
+          </div>
+        </article>
       </section>
 
       <section className="section product-section-tight account-layout">
@@ -146,7 +242,12 @@ export default async function AccountPage() {
       </section>
 
       <section className="section product-section-tight">
-        <AccountAlerts initialAlerts={alerts} />
+        <AccountAlerts
+          initialAlerts={alerts}
+          hasProfile={hasProfile}
+          hasEmail={hasEmail}
+          savedCount={savedCount}
+        />
       </section>
     </main>
   );
