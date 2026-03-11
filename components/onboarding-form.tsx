@@ -19,6 +19,47 @@ const defaultProfile: TravelerProfile = {
   tripStyles: ["Flexible luxury", "Long weekend"],
 };
 
+const profilePresets: Array<{ id: string; label: string; description: string; profile: TravelerProfile }> = [
+  {
+    id: "balanced-luxury",
+    label: "Luxury but sane",
+    description: "Premium cabins, one-stop tolerance, good value without chaos.",
+    profile: defaultProfile,
+  },
+  {
+    id: "value-hunter",
+    label: "Max value hunter",
+    description: "Wider airport net, bigger detours, stronger price sensitivity.",
+    profile: {
+      homeAirports: ["SIN", "BKK", "KUL"],
+      repositionRegions: ["Southeast Asia", "Middle East", "Anywhere"],
+      preferredCabins: ["Business", "First"],
+      maxStops: 2,
+      allowOvernight: true,
+      maxTravelPain: 9,
+      destinationInterests: ["Europe", "Japan", "Anywhere"],
+      budgetMax: 1800,
+      tripStyles: ["Flexible luxury", "Aspirational trip"],
+    },
+  },
+  {
+    id: "low-friction",
+    label: "Minimal hassle",
+    description: "Cleaner routings, lower pain, still premium when the math works.",
+    profile: {
+      homeAirports: ["SIN", "SYD"],
+      repositionRegions: ["Southeast Asia", "Australia"],
+      preferredCabins: ["Business", "Luxury Stay"],
+      maxStops: 0,
+      allowOvernight: false,
+      maxTravelPain: 4,
+      destinationInterests: ["Japan", "Europe"],
+      budgetMax: 3200,
+      tripStyles: ["Long weekend", "Flexible luxury"],
+    },
+  },
+];
+
 const airportOptions = ["SIN", "SYD", "MEL", "BKK", "KUL", "LHR", "DXB", "HKG"];
 const regionOptions = ["Southeast Asia", "Australia", "Europe", "Middle East", "Japan", "Anywhere"];
 const cabinOptions = ["Business", "First", "Luxury Stay"];
@@ -32,8 +73,9 @@ export function OnboardingForm() {
   const router = useRouter();
   const [profile, setProfile] = useState<TravelerProfile>(defaultProfile);
   const [user, setUser] = useState<UserRecord | null>(null);
-  const [statusMessage, setStatusMessage] = useState("Your profile can now sync to the Detourist backend.");
+  const [statusMessage, setStatusMessage] = useState("Defaults are loaded. Adjust only what matters, then open your feed.");
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<string>("balanced-luxury");
 
   useEffect(() => {
     async function loadProfile() {
@@ -44,6 +86,7 @@ export function OnboardingForm() {
         if (payload.profile) {
           setProfile(payload.profile);
           setUser(payload.user);
+          setSelectedPreset("");
           window.localStorage.setItem(profileStorageKey, JSON.stringify(payload.profile));
           return;
         }
@@ -58,6 +101,7 @@ export function OnboardingForm() {
       try {
         const parsed = JSON.parse(stored) as TravelerProfile;
         setProfile(parsed);
+        setSelectedPreset("");
       } catch {
         window.localStorage.removeItem(profileStorageKey);
       }
@@ -65,6 +109,17 @@ export function OnboardingForm() {
 
     void loadProfile();
   }, []);
+
+  function applyPreset(presetId: string) {
+    const preset = profilePresets.find((item) => item.id === presetId);
+    if (!preset) {
+      return;
+    }
+
+    setProfile(preset.profile);
+    setSelectedPreset(preset.id);
+    setStatusMessage(`${preset.label} applied. You can save now or fine-tune any field below.`);
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -106,16 +161,58 @@ export function OnboardingForm() {
           <p className="section-kicker">Linked identity</p>
           <p>
             {user.email
-              ? `This traveler profile is linked to ${user.email}.`
-              : "This traveler profile exists, but it is not linked to a waitlist email yet."}
+              ? `This traveler profile is linked to ${user.email}. Save once and Detourist will send you straight into the live feed.`
+              : "This traveler profile exists, but it is not linked to a waitlist email yet. You can still shape the feed now and add email later from Account."}
           </p>
         </div>
       ) : null}
+
+      <section className="detail-card onboarding-quickstart-card">
+        <div>
+          <p className="section-kicker">Quick start</p>
+          <h2>Pick a starting posture, then fine-tune only what matters.</h2>
+          <p className="support-text">
+            Most people can launch with one of these presets and adjust just one or two fields. The goal is not perfect preferences, just a feed that starts feeling like yours immediately.
+          </p>
+        </div>
+        <div className="preset-button-row">
+          {profilePresets.map((preset) => (
+            <button
+              className={`preset-button ${selectedPreset === preset.id ? "preset-button-active" : ""}`}
+              key={preset.id}
+              type="button"
+              onClick={() => applyPreset(preset.id)}
+            >
+              <strong>{preset.label}</strong>
+              <span>{preset.description}</span>
+            </button>
+          ))}
+        </div>
+        <div className="onboarding-summary-grid">
+          <div className="onboarding-summary-item">
+            <span>Departures</span>
+            <strong>{profile.homeAirports.join(", ")}</strong>
+          </div>
+          <div className="onboarding-summary-item">
+            <span>Pain tolerance</span>
+            <strong>{profile.maxTravelPain}/10 {profile.allowOvernight ? "with overnight" : "no overnight"}</strong>
+          </div>
+          <div className="onboarding-summary-item">
+            <span>Cabin + budget</span>
+            <strong>{profile.preferredCabins.join(", ")} under ${profile.budgetMax}</strong>
+          </div>
+          <div className="onboarding-summary-item">
+            <span>Targets</span>
+            <strong>{profile.destinationInterests.slice(0, 2).join(", ")}</strong>
+          </div>
+        </div>
+      </section>
+
       <section className="form-section-grid">
         <div className="form-card">
           <p className="section-kicker">Step 1</p>
           <h3>Where can you start?</h3>
-          <p>Choose the airports you can realistically depart from without hating your life.</p>
+          <p>Choose the airports you can realistically depart from.</p>
           <div className="option-grid option-grid-tight">
             {airportOptions.map((airport) => (
               <label className="choice-chip" key={airport}>
@@ -137,7 +234,7 @@ export function OnboardingForm() {
 
         <div className="form-card">
           <p className="section-kicker">Step 2</p>
-          <h3>How much detour can you tolerate?</h3>
+          <h3>How much friction is acceptable?</h3>
           <label className="field-label">
             Max stops
             <select
@@ -159,7 +256,7 @@ export function OnboardingForm() {
                 setProfile((current) => ({ ...current, allowOvernight: event.target.checked }))
               }
             />
-            <span>Allow overnight layovers if the value is strong enough</span>
+            <span>Allow overnight layovers if the economics are strong enough</span>
           </label>
           <label className="field-label">
             Travel pain tolerance: <strong>{profile.maxTravelPain}/10</strong>
@@ -179,7 +276,7 @@ export function OnboardingForm() {
       <section className="form-section-grid">
         <div className="form-card">
           <p className="section-kicker">Step 3</p>
-          <h3>What do you actually want?</h3>
+          <h3>What upside are you chasing?</h3>
           <div className="field-stack">
             <span className="field-caption">Preferred cabins</span>
             <div className="option-grid">
@@ -224,7 +321,7 @@ export function OnboardingForm() {
 
         <div className="form-card">
           <p className="section-kicker">Step 4</p>
-          <h3>Set your budget ceiling</h3>
+          <h3>Set your price guardrails</h3>
           <label className="field-label">
             Max cash budget in USD
             <input
@@ -286,7 +383,7 @@ export function OnboardingForm() {
           <p>{statusMessage}</p>
         </div>
         <button className="button" type="submit" disabled={isSaving}>
-          {isSaving ? "Saving profile..." : "Save profile and see deals"}
+          {isSaving ? "Saving profile..." : "Save profile and open my feed"}
         </button>
       </div>
     </form>
