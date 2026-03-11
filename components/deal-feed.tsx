@@ -10,6 +10,7 @@ import { Deal, TravelerProfile, UserRecord } from "@/lib/types";
 const profileStorageKey = "detourist-profile";
 const savedDealsKey = "detourist-saved-deals";
 const hiddenDealsKey = "detourist-hidden-deals";
+const FEATURED_MATCH_THRESHOLD = 80;
 
 type SortMode = "best" | "latest" | "cheapest";
 type FilterMode = "all" | "flight" | "hotel" | "saved";
@@ -118,6 +119,22 @@ export function DealFeed() {
       });
   }, [deals, filterMode, hiddenDeals, profile, savedDeals, sortMode]);
 
+  const featuredMatch = useMemo(() => {
+    if (!profile || rankedDeals.length === 0) {
+      return null;
+    }
+
+    return rankedDeals[0] ?? null;
+  }, [profile, rankedDeals]);
+
+  const strongMatchCount = useMemo(() => {
+    if (!profile) {
+      return 0;
+    }
+
+    return rankedDeals.filter(({ score }) => score.score >= FEATURED_MATCH_THRESHOLD).length;
+  }, [profile, rankedDeals]);
+
   function syncLocalState(nextSaved: string[], nextHidden: string[]) {
     window.localStorage.setItem(savedDealsKey, JSON.stringify(nextSaved));
     window.localStorage.setItem(hiddenDealsKey, JSON.stringify(nextHidden));
@@ -216,7 +233,9 @@ export function DealFeed() {
             <p className="section-kicker">Personalized feed</p>
             <h2>Deals ranked by upside versus inconvenience</h2>
             <p>
-              The score is higher when the savings are unusual, the cabin is strong, and the pain stays within your comfort zone.
+              {profile
+                ? "These rankings now reflect your home airports, cabin taste, budget ceiling, and pain tolerance instead of a generic luxury-travel default."
+                : "The score is higher when the savings are unusual, the cabin is strong, and the pain stays within your comfort zone."}
             </p>
           </div>
           <div className="toolbar-card">
@@ -240,6 +259,93 @@ export function DealFeed() {
           </div>
         </div>
 
+        {featuredMatch ? (
+          <article className="feed-spotlight-card">
+            <div className="feed-spotlight-header">
+              <div className="feed-spotlight-copy">
+                <p className="section-kicker">Best fit right now</p>
+                <h3>{featuredMatch.deal.title}</h3>
+                <p>
+                  {strongMatchCount > 1
+                    ? `${strongMatchCount} strong matches clear your current threshold. This is the one Detourist would open first.`
+                    : "This is the cleanest high-conviction match against your current profile."}
+                </p>
+                <div className="feed-profile-strip">
+                  <span>{featuredMatch.deal.origin} to {featuredMatch.deal.destination}</span>
+                  <span>{featuredMatch.score.matchLabel}</span>
+                  <span>{featuredMatch.score.savingsPercent}% below usual</span>
+                </div>
+              </div>
+              <div className="score-badge large">
+                <span>{featuredMatch.score.score}</span>
+                <small>/100</small>
+              </div>
+            </div>
+            <div className="deal-match-panel deal-match-panel-featured">
+              <p className="deal-label">Why this matches you</p>
+              <div className="reason-stack">
+                {featuredMatch.score.reasons.slice(0, 3).map((reason) => (
+                  <span className="insight-pill" key={`featured-${reason}`}>{reason}</span>
+                ))}
+              </div>
+              {featuredMatch.score.warnings.length ? (
+                <>
+                  <p className="deal-label">Tradeoffs to check</p>
+                  <div className="warning-stack">
+                    {featuredMatch.score.warnings.slice(0, 2).map((warning) => (
+                      <span className="warning-pill" key={`featured-warning-${warning}`}>{warning}</span>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
+            <div className="feed-spotlight-actions">
+              <Link
+                className="button button-secondary"
+                href={`/deals/${featuredMatch.deal.slug}`}
+                onClick={() => {
+                  void trackDealEvent({
+                    type: "detail_view",
+                    dealId: featuredMatch.deal.id,
+                    dealSlug: featuredMatch.deal.slug,
+                    surface: "feed-spotlight",
+                  });
+                }}
+              >
+                Review best fit
+              </Link>
+              <a
+                className="button"
+                href={featuredMatch.deal.bookingUrl}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => {
+                  void trackDealEvent({
+                    type: "booking_click",
+                    dealId: featuredMatch.deal.id,
+                    dealSlug: featuredMatch.deal.slug,
+                    surface: "feed-spotlight",
+                  });
+                }}
+              >
+                Open booking link
+              </a>
+            </div>
+          </article>
+        ) : null}
+
+        {!profile ? (
+          <article className="detail-card feed-guidance-card">
+            <p className="section-kicker">Make this personal</p>
+            <h3>Right now the feed is smart, but not truly yours yet.</h3>
+            <p>
+              Add your detour profile and Detourist will explain which deals match your home airports, cabin preferences,
+              budget, and inconvenience tolerance instead of scoring them generically.
+            </p>
+            <a className="button" href="/onboarding">Set detour profile</a>
+          </article>
+        ) : null}
+
         <div className="feed-grid">
           {rankedDeals.map(({ deal, score }) => {
             const isSaved = savedDeals.includes(deal.id);
@@ -262,16 +368,29 @@ export function DealFeed() {
                   <span>{score.matchLabel}</span>
                   <span>{score.savingsPercent}% below usual</span>
                 </div>
+                <div className="deal-match-panel">
+                  <p className="deal-label">Why this matches you</p>
+                  <div className="reason-stack">
+                    {score.reasons.slice(0, 2).map((reason) => (
+                      <span className="insight-pill" key={reason}>{reason}</span>
+                    ))}
+                  </div>
+                  {score.warnings.length ? (
+                    <>
+                      <p className="deal-label">Tradeoffs to check</p>
+                      <div className="warning-stack">
+                        {score.warnings.slice(0, 2).map((warning) => (
+                          <span className="warning-pill" key={warning}>{warning}</span>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+                </div>
                 <p className="deal-copy">{deal.summary}</p>
                 <p className="deal-label">Why it's worth it</p>
                 <p className="deal-value">{deal.whyWorthIt}</p>
                 <p className="deal-label">The catch</p>
                 <p className="deal-copy">{deal.catchSummary}</p>
-                <div className="reason-stack">
-                  {score.reasons.slice(0, 2).map((reason) => (
-                    <span className="insight-pill" key={reason}>{reason}</span>
-                  ))}
-                </div>
                 <div className="deal-actions deal-actions-stack">
                   <div className="deal-actions-inline">
                     <button className="button button-secondary" type="button" onClick={() => toggleSaved(deal)}>

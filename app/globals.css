@@ -1424,9 +1424,91 @@ input:disabled {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.feed-spotlight-card,
+.feed-guidance-card {
+  border: 1px solid var(--card-border);
+  border-radius: calc(var(--radius-xl) + 4px);
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(239, 230, 218, 0.86)),
+    linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(183, 121, 31, 0.08));
+  box-shadow: var(--shadow);
+}
+
+.feed-spotlight-card {
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.feed-spotlight-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.feed-spotlight-copy h3,
+.feed-guidance-card h3 {
+  margin: 8px 0 12px;
+  font-family: var(--serif);
+  font-size: 2rem;
+}
+
+.feed-spotlight-copy p,
+.feed-guidance-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.feed-profile-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.feed-profile-strip span {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(29, 42, 42, 0.1);
+  color: var(--teal-deep);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.feed-spotlight-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .deal-card-product {
   display: flex;
   flex-direction: column;
+}
+
+.deal-match-panel {
+  margin: 4px 0 18px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(29, 42, 42, 0.08);
+}
+
+.deal-match-panel-featured {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.deal-match-panel .deal-label + .reason-stack,
+.deal-match-panel .deal-label + .warning-stack {
+  margin-top: 10px;
+}
+
+.deal-match-panel .deal-label {
+  margin-top: 0;
 }
 
 .deal-route {
@@ -1593,6 +1675,10 @@ input:disabled {
   .feed-grid {
     grid-template-columns: 1fr;
   }
+
+  .feed-spotlight-header {
+    flex-direction: column;
+  }
 }
 
 @media (max-width: 900px) {
@@ -1615,9 +1701,14 @@ input:disabled {
   .form-footer,
   .deal-actions,
   .detail-actions-row,
-  .toolbar-card {
+  .toolbar-card,
+  .feed-spotlight-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .feed-spotlight-actions .button {
+    width: 100%;
   }
 }
 .hero-cta-row {
