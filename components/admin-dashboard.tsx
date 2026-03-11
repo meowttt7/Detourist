@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AdminEmailDeliveries } from "@/components/admin-email-deliveries";
 import { AdminRecentAlerts } from "@/components/admin-recent-alerts";
+import { AdminRecentDeals } from "@/components/admin-recent-deals";
 import { AdminRecentEvents } from "@/components/admin-recent-events";
 import { AdminScheduledJobRuns } from "@/components/admin-scheduled-job-runs";
 import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
@@ -271,36 +272,7 @@ export async function AdminDashboard() {
 
       <AdminWaitlistIdentities initialEntries={lists.recentWaitlistIdentities} />
 
-      <article className="detail-card">
-        <div className="section-heading-row product-heading-row">
-          <div>
-            <p className="section-kicker">Recent content</p>
-            <h2>Newest deals in the feed</h2>
-          </div>
-        </div>
-        <div className="admin-table">
-          <div className="admin-table-head">
-            <span>Deal</span>
-            <span>Type</span>
-            <span>Published</span>
-            <span>Expires</span>
-            <span>Price</span>
-          </div>
-          {lists.recentDeals.length ? (
-            lists.recentDeals.map((deal) => (
-              <div className="admin-table-row" key={deal.id}>
-                <Link href={`/deals/${deal.slug}`}>{deal.title}</Link>
-                <span>{deal.type}</span>
-                <span>{new Date(deal.publishedAt).toLocaleDateString()}</span>
-                <span>{new Date(deal.expiresAt).toLocaleDateString()}</span>
-                <span>${deal.currentPrice} {deal.currency}</span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-table-empty">No deals published yet.</div>
-          )}
-        </div>
-      </article>
+      <AdminRecentDeals initialDeals={lists.recentDeals} />
 
       <AdminRecentAlerts initialAlerts={lists.recentAlerts} />
 

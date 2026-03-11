@@ -117,7 +117,7 @@ export async function getAdminAnalytics() {
     .sort((left, right) => (right.interactions + right.alertCount) - (left.interactions + left.alertCount))
     .slice(0, 5);
 
-  const recentDeals = deals.slice(0, 5).map((deal) => ({
+  const recentDeals = deals.slice(0, 40).map((deal) => ({
     id: deal.id,
     title: deal.title,
     slug: deal.slug,
