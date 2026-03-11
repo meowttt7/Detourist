@@ -5,6 +5,7 @@ import { AdminRecentAlerts } from "@/components/admin-recent-alerts";
 import { AdminRecentDeals } from "@/components/admin-recent-deals";
 import { AdminRecentEvents } from "@/components/admin-recent-events";
 import { AdminScheduledJobRuns } from "@/components/admin-scheduled-job-runs";
+import { AdminSourceProbeRuns } from "@/components/admin-source-probe-runs";
 import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
 import { getAdminAnalytics } from "@/lib/admin-analytics";
 
@@ -68,6 +69,10 @@ export async function AdminDashboard() {
               <strong>{operations.databaseProvider}</strong>
             </div>
             <div className="mini-stat-row">
+              <span>Bootstrap seed</span>
+              <strong>{operations.bootstrapSeedMode}</strong>
+            </div>
+            <div className="mini-stat-row">
               <span>Turso ready</span>
               <strong>{operations.tursoConfigured ? "yes" : "no"}</strong>
             </div>
@@ -94,6 +99,14 @@ export async function AdminDashboard() {
             <div className="mini-stat-row">
               <span>Cron secret</span>
               <strong>{operations.cronSecretConfigured ? "present" : "missing"}</strong>
+            </div>
+            <div className="mini-stat-row">
+              <span>Last Amadeus probe</span>
+              <strong>
+                {operations.latestAmadeusProbe
+                  ? `${operations.latestAmadeusProbe.status} ${new Date(operations.latestAmadeusProbe.createdAt).toLocaleString()}`
+                  : "no probes yet"}
+              </strong>
             </div>
             <div className="mini-stat-row">
               <span>Last scheduled digest</span>
@@ -278,11 +291,11 @@ export async function AdminDashboard() {
 
       <AdminScheduledJobRuns latestRun={operations.latestScheduledDigestRun} runs={lists.recentScheduledDigestRuns} />
 
+      <AdminSourceProbeRuns latestRun={operations.latestAmadeusProbe} runs={lists.recentAmadeusProbes} />
+
       <AdminEmailDeliveries initialDeliveries={lists.recentEmailDeliveries} />
 
       <AdminRecentEvents initialEvents={lists.recentEvents} />
     </section>
   );
 }
-
-

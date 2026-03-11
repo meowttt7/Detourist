@@ -1,6 +1,6 @@
 import { getAllAlerts } from "@/lib/alert-store";
 import { getDetouristAppUrl } from "@/lib/app-url";
-import { getDatabaseProviderLabel } from "@/lib/db";
+import { getBootstrapSeedModeLabel, getDatabaseProviderLabel } from "@/lib/db";
 import { formatDigestScheduleLabel, getDigestScheduleConfig } from "@/lib/digest-config";
 import { getAllDeals } from "@/lib/deal-store";
 import { getAllEmailDeliveries, getEmailDeliveriesByReferences } from "@/lib/email-delivery-store";
@@ -24,7 +24,7 @@ function countBy(items: string[]) {
 }
 
 export async function getAdminAnalytics() {
-  const [deals, profiles, users, waitlist, events, alerts, emailDeliveries, latestScheduledDigestRun, recentScheduledDigestRuns] = await Promise.all([
+  const [deals, profiles, users, waitlist, events, alerts, emailDeliveries, latestScheduledDigestRun, recentScheduledDigestRuns, latestAmadeusProbe, recentAmadeusProbes] = await Promise.all([
     getAllDeals(),
     getAllProfiles(),
     getAllUsers(),
@@ -34,6 +34,8 @@ export async function getAdminAnalytics() {
     getAllEmailDeliveries(),
     getLatestScheduledJobRun("daily_digest_schedule"),
     getRecentScheduledJobRuns("daily_digest_schedule", 40),
+    getLatestScheduledJobRun("amadeus_auth_probe"),
+    getRecentScheduledJobRuns("amadeus_auth_probe", 20),
   ]);
 
   const now = Date.now();
@@ -206,6 +208,7 @@ export async function getAdminAnalytics() {
     operations: {
       appUrl: getDetouristAppUrl(),
       databaseProvider: getDatabaseProviderLabel(),
+      bootstrapSeedMode: getBootstrapSeedModeLabel(),
       mailerMode: mailer.mode,
       fromAddress: mailer.fromAddress,
       smtpHost: mailer.smtpHost,
@@ -218,6 +221,7 @@ export async function getAdminAnalytics() {
       cronSecretConfigured: Boolean(digestConfig.cronSecret),
       tursoConfigured: Boolean(process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN),
       latestScheduledDigestRun,
+      latestAmadeusProbe,
     },
     lists: {
       topDestinations,
@@ -236,6 +240,7 @@ export async function getAdminAnalytics() {
       recentEmailDeliveries,
       recentWaitlistIdentities,
       recentScheduledDigestRuns,
+      recentAmadeusProbes,
     },
   };
 }
