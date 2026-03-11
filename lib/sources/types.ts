@@ -1,7 +1,7 @@
 import type { Deal } from "@/lib/types";
 
 export type SourceTravelClass = "ECONOMY" | "PREMIUM_ECONOMY" | "BUSINESS" | "FIRST";
-export type DealImportSource = "amadeus";
+export type DealImportSource = "amadeus" | "manual_json";
 export type ImportedDealPayload = Omit<Deal, "id" | "slug" | "publishedAt">;
 
 export type FlightOfferSearchInput = {

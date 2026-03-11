@@ -166,9 +166,12 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
   const [savedImports, setSavedImports] = useState<ImportedDealDraftWithReview[]>([]);
   const [importsLoading, setImportsLoading] = useState(true);
   const [importsStatus, setImportsStatus] = useState<string>("Save strong live-source candidates here while you review copy and booking links.");
+  const [jsonImportValue, setJsonImportValue] = useState("");
+  const [jsonImportLoading, setJsonImportLoading] = useState(false);
+  const [jsonImportStatus, setJsonImportStatus] = useState<string>("Export your current deals as JSON or import a JSON array back into the review queue.");
   const [activeImportDraftId, setActiveImportDraftId] = useState<string | null>(null);
-  const [publishLoading, setPublishLoading] = useState(false);
   const [duplicateConflict, setDuplicateConflict] = useState<DuplicateMatch[]>([]);
+  const [publishLoading, setPublishLoading] = useState(false);
   const [dealActionLoadingKey, setDealActionLoadingKey] = useState<string | null>(null);
 
   async function loadDeals() {
@@ -550,6 +553,45 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
     await loadImportDrafts();
   };
 
+  const handleJsonImport = async () => {
+    setJsonImportLoading(true);
+    setJsonImportStatus("Importing JSON into the review queue...");
+
+    try {
+      const parsed = JSON.parse(jsonImportValue) as unknown;
+      const response = await fetch("/api/admin/deals/import", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(parsed),
+      });
+
+      const payload = (await response.json()) as {
+        error?: string;
+        importedCount?: number;
+        skippedCount?: number;
+      };
+
+      if (!response.ok) {
+        setJsonImportStatus(payload.error ?? "Could not import deals from JSON.");
+        if (response.status === 401) {
+          router.push("/login?redirect=/admin");
+        }
+        return;
+      }
+
+      setJsonImportValue("");
+      setJsonImportStatus(`Imported ${payload.importedCount ?? 0} deal drafts. ${payload.skippedCount ?? 0} entries were skipped.`);
+      setImportsStatus("JSON import added new drafts to the review queue.");
+      await loadImportDrafts();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not parse or import JSON.";
+      setJsonImportStatus(message);
+    } finally {
+      setJsonImportLoading(false);
+    }
+  };
   const handleDeleteImportDraft = async (draftId: string) => {
     setImportsStatus("Removing saved import...");
 
@@ -919,6 +961,34 @@ export function AdminDealManager({ digestScheduleLabel }: { digestScheduleLabel:
               ))}
             </div>
           ) : null}
+          <div className="admin-import-queue">
+            <div className="section-heading-row product-heading-row">
+              <div>
+                <p className="section-kicker">JSON import/export</p>
+                <h3>Move deal content in and out safely</h3>
+              </div>
+            </div>
+            <p className="support-text">Export the current feed as JSON, or paste a JSON array back in to save the deals into the review queue without publishing them immediately.</p>
+            <div className="admin-import-actions admin-json-import-actions">
+              <a className="button button-small button-secondary" href="/api/admin/deals/export">Export deals JSON</a>
+            </div>
+            <label className="field-label form-grid-span-two">
+              Import JSON
+              <textarea
+                value={jsonImportValue}
+                onChange={(event) => setJsonImportValue(event.target.value)}
+                rows={8}
+                placeholder='Paste a JSON array or an object like { "deals": [...] }'
+              />
+            </label>
+            <div className="detail-actions-column admin-ops-actions admin-json-import-controls">
+              <button className="button button-secondary" type="button" onClick={handleJsonImport} disabled={jsonImportLoading || !jsonImportValue.trim()}>
+                {jsonImportLoading ? "Importing..." : "Import JSON to queue"}
+              </button>
+              <p className="status-copy">{jsonImportStatus}</p>
+            </div>
+          </div>
+
           <div className="admin-import-queue">
             <div className="section-heading-row product-heading-row">
               <div>
