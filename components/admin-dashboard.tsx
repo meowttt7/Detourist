@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminEmailDeliveries } from "@/components/admin-email-deliveries";
 import { AdminRecentAlerts } from "@/components/admin-recent-alerts";
 import { AdminRecentEvents } from "@/components/admin-recent-events";
+import { AdminScheduledJobRuns } from "@/components/admin-scheduled-job-runs";
 import { AdminWaitlistIdentities } from "@/components/admin-waitlist-identities";
 import { getAdminAnalytics } from "@/lib/admin-analytics";
 
@@ -14,30 +15,6 @@ function MetricCard({ label, value, note }: { label: string; value: string | num
       <p>{note}</p>
     </article>
   );
-}
-
-function formatScheduledRunStatus(status: string) {
-  switch (status) {
-    case "success":
-      return "sent";
-    case "skipped":
-      return "skipped";
-    case "failed":
-      return "failed";
-    case "unauthorized":
-      return "blocked";
-    default:
-      return status;
-  }
-}
-
-function formatScheduledRunDeliveries(run: { metadata: { deliveries?: { sent: number; queued: number; failed: number } } }) {
-  const deliveries = run.metadata.deliveries;
-  if (!deliveries) {
-    return "No delivery summary.";
-  }
-
-  return `${deliveries.sent} sent, ${deliveries.queued} queued, ${deliveries.failed} failed`;
 }
 
 export async function AdminDashboard() {
@@ -121,7 +98,7 @@ export async function AdminDashboard() {
               <span>Last scheduled digest</span>
               <strong>
                 {operations.latestScheduledDigestRun
-                  ? `${formatScheduledRunStatus(operations.latestScheduledDigestRun.status)} ${new Date(operations.latestScheduledDigestRun.createdAt).toLocaleString()}`
+                  ? `${operations.latestScheduledDigestRun.status} ${new Date(operations.latestScheduledDigestRun.createdAt).toLocaleString()}`
                   : "no runs yet"}
               </strong>
             </div>
@@ -327,55 +304,7 @@ export async function AdminDashboard() {
 
       <AdminRecentAlerts initialAlerts={lists.recentAlerts} />
 
-      <article className="detail-card">
-        <div className="section-heading-row product-heading-row">
-          <div>
-            <p className="section-kicker">Scheduler</p>
-            <h2>Recent cron-safe digest runs</h2>
-          </div>
-        </div>
-        {operations.latestScheduledDigestRun ? (
-          <div className="mini-stat-list admin-inline-summary-list">
-            <div className="mini-stat-row">
-              <span>Latest outcome</span>
-              <strong>{formatScheduledRunStatus(operations.latestScheduledDigestRun.status)}</strong>
-            </div>
-            <div className="mini-stat-row">
-              <span>Latest summary</span>
-              <strong>{operations.latestScheduledDigestRun.summary}</strong>
-            </div>
-            <div className="mini-stat-row">
-              <span>Latest delivery mix</span>
-              <strong>{formatScheduledRunDeliveries(operations.latestScheduledDigestRun)}</strong>
-            </div>
-          </div>
-        ) : (
-          <p>No scheduled digest runs recorded yet.</p>
-        )}
-        <div className="admin-table admin-table-events">
-          <div className="admin-table-head admin-table-head-events">
-            <span>Time</span>
-            <span>Status</span>
-            <span>Summary</span>
-            <span>Details</span>
-          </div>
-          {lists.recentScheduledDigestRuns.length ? (
-            lists.recentScheduledDigestRuns.map((run) => (
-              <div className="admin-table-row admin-table-row-events" key={run.id}>
-                <span>{new Date(run.createdAt).toLocaleString()}</span>
-                <span>{formatScheduledRunStatus(run.status)}</span>
-                <span>{run.summary}</span>
-                <span>
-                  {run.metadata.scheduleDate ? `${run.metadata.scheduleDate} ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â· ` : ""}
-                  {formatScheduledRunDeliveries(run)}
-                </span>
-              </div>
-            ))
-          ) : (
-            <div className="admin-table-empty">No scheduled digest runs recorded yet.</div>
-          )}
-        </div>
-      </article>
+      <AdminScheduledJobRuns latestRun={operations.latestScheduledDigestRun} runs={lists.recentScheduledDigestRuns} />
 
       <AdminEmailDeliveries initialDeliveries={lists.recentEmailDeliveries} />
 

@@ -33,7 +33,7 @@ export async function getAdminAnalytics() {
     getAllAlerts(),
     getAllEmailDeliveries(),
     getLatestScheduledJobRun("daily_digest_schedule"),
-    getRecentScheduledJobRuns("daily_digest_schedule", 6),
+    getRecentScheduledJobRuns("daily_digest_schedule", 40),
   ]);
 
   const now = Date.now();
